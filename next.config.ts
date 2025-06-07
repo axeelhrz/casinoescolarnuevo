@@ -1,4 +1,3 @@
-
 import type { NextConfig } from 'next';
 
 /** @type {import('next').NextConfig} */
@@ -56,7 +55,7 @@ const nextConfig: NextConfig = {
   },
 
   // Configuración de webpack optimizada
-  webpack: (config: import('webpack').Configuration, { dev, isServer }: { dev: boolean; isServer: boolean }) => {
+  webpack: (config, { dev, isServer }) => {
     if (!dev && !isServer) {
       config.optimization = config.optimization || {};
       config.optimization.splitChunks = {
