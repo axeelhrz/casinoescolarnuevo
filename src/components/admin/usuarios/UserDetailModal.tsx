@@ -225,7 +225,7 @@ export function UserDetailModal({
                       <div className="space-y-1 text-sm text-slate-600 dark:text-slate-400">
                         <div>Edad: {child.age} años</div>
                         <div>Curso: {child.class}</div>
-                        <div>Nivel: {child.level === 'basico' ? 'Básico' : 'Medio'}</div>
+                        <div>Nivel: {child.level}</div>
                       </div>
                     </div>
                   ))}

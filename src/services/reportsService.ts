@@ -26,7 +26,7 @@ interface OrderData {
   userId: string
   status: string
   total?: number
-  createdAt?: Timestamp
+  createdAt?: Timestamp | Date | string | number | { seconds: number; nanoseconds?: number }
   selections?: Array<{
     almuerzo?: {
       code: string
@@ -49,6 +49,108 @@ interface UserData {
   id: string
   userType: string
   [key: string]: string | number | boolean | Date | null | undefined
+}
+
+// Helper function to create local date from YYYY-MM-DD string - CORREGIDO
+function createLocalDate(dateString: string): Date {
+  try {
+    const [year, month, day] = dateString.split('-').map(Number)
+    if (!year || !month || !day || month < 1 || month > 12 || day < 1 || day > 31) {
+      throw new Error(`Invalid date components: ${dateString}`)
+    }
+    
+    // Crear fecha local (sin conversión de zona horaria)
+    const date = new Date(year, month - 1, day)
+    
+    // Verificar que la fecha creada es válida
+    if (isNaN(date.getTime())) {
+      throw new Error(`Invalid date created: ${dateString}`)
+    }
+    
+    return date
+  } catch (error) {
+    console.error('Error creating local date:', dateString, error)
+    // Fallback: usar parseISO pero ajustar a medianoche local
+    try {
+      const isoDate = parseISO(dateString + 'T00:00:00')
+      if (!isNaN(isoDate.getTime())) {
+        return isoDate
+      }
+    } catch (fallbackError) {
+      console.error('Fallback date parsing also failed:', fallbackError)
+    }
+    
+    // Último recurso: fecha actual
+    return new Date()
+  }
+}
+
+// Helper function to format date to YYYY-MM-DD - CORREGIDO
+function formatToDateString(date: Date): string {
+  try {
+    // Usar métodos locales para evitar problemas de zona horaria
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  } catch (error) {
+    console.error('Error formatting date to string:', error)
+    // Fallback usando format de date-fns
+    return format(date, 'yyyy-MM-dd')
+  }
+}
+
+// Helper function to safely convert Firebase timestamp to Date - CORREGIDO
+function safeToDate(timestamp: Timestamp | Date | string | number | { seconds: number; nanoseconds?: number } | null | undefined): Date | null {
+  if (!timestamp) return null
+  
+  // If it's already a Date object
+  if (timestamp instanceof Date) {
+    return timestamp
+  }
+  
+  // If it's a Firebase Timestamp
+  if (timestamp && typeof timestamp === 'object' && 'toDate' in timestamp && typeof timestamp.toDate === 'function') {
+    try {
+      return timestamp.toDate()
+    } catch (error) {
+      console.error('Error converting timestamp to date:', error)
+      return null
+    }
+  }
+  
+  // If it's a timestamp object with seconds
+  if (timestamp && typeof timestamp === 'object' && 'seconds' in timestamp && typeof timestamp.seconds === 'number') {
+    try {
+      return new Date(timestamp.seconds * 1000)
+    } catch (error) {
+      console.error('Error converting seconds to date:', error)
+      return null
+    }
+  }
+  
+  // If it's a string, try to parse it
+  if (typeof timestamp === 'string') {
+    try {
+      return new Date(timestamp)
+    } catch (error) {
+      console.error('Error parsing date string:', error)
+      return null
+    }
+  }
+  
+  // If it's a number (milliseconds)
+  if (typeof timestamp === 'number') {
+    try {
+      return new Date(timestamp)
+    } catch (error) {
+      console.error('Error converting number to date:', error)
+      return null
+    }
+  }
+  
+  console.warn('Unknown timestamp format:', timestamp)
+  return null
 }
 
 export class ReportsService {
@@ -99,11 +201,11 @@ export class ReportsService {
 
       for (const orderDoc of ordersSnapshot.docs) {
         const orderData = orderDoc.data()
-        const orderDate = orderData.createdAt?.toDate()
+        const orderDate = safeToDate(orderData.createdAt)
 
-        // Filtrar por rango de fechas
+        // Filtrar por rango de fechas usando fechas locales
         if (orderDate) {
-          const orderDateStr = format(orderDate, 'yyyy-MM-dd')
+          const orderDateStr = formatToDateString(orderDate)
           if (orderDateStr >= filters.dateRange.start && orderDateStr <= filters.dateRange.end) {
             // Obtener datos del usuario
             try {
@@ -120,6 +222,7 @@ export class ReportsService {
                   orders.push({
                     id: orderDoc.id,
                     ...orderData,
+                    createdAt: orderDate, // Use the safely converted date
                     user: userData
                   } as OrderData)
                 }
@@ -127,6 +230,7 @@ export class ReportsService {
                 orders.push({
                   id: orderDoc.id,
                   ...orderData,
+                  createdAt: orderDate, // Use the safely converted date
                   user: userData
                 } as OrderData)
               }
@@ -137,11 +241,14 @@ export class ReportsService {
                 orders.push({
                   id: orderDoc.id,
                   ...orderData,
+                  createdAt: orderDate, // Use the safely converted date
                   user: { userType: 'estudiante' } // valor por defecto
                 } as OrderData)
               }
             }
           }
+        } else {
+          console.warn(`Order ${orderDoc.id} has invalid createdAt timestamp:`, orderData.createdAt)
         }
       }
 
@@ -205,15 +312,15 @@ export class ReportsService {
   }
 
   private static generateDailyData(orders: OrderData[], filters: ReportsFilters): ChartDataPoint[] {
-    const startDate = parseISO(filters.dateRange.start)
-    const endDate = parseISO(filters.dateRange.end)
+    const startDate = createLocalDate(filters.dateRange.start)
+    const endDate = createLocalDate(filters.dateRange.end)
     const days = eachDayOfInterval({ start: startDate, end: endDate })
 
     return days.map(day => {
-      const dayStr = format(day, 'yyyy-MM-dd')
+      const dayStr = formatToDateString(day)
       const dayOrders = orders.filter(order => {
-        const orderDate = order.createdAt?.toDate()
-        return orderDate && format(orderDate, 'yyyy-MM-dd') === dayStr
+        const orderDate = order.createdAt instanceof Date ? order.createdAt : safeToDate(order.createdAt)
+        return orderDate && formatToDateString(orderDate) === dayStr
       })
 
       const dayRevenue = dayOrders
@@ -315,15 +422,15 @@ export class ReportsService {
   }
 
   private static calculateDailyMetrics(orders: OrderData[], filters: ReportsFilters): DailyMetrics[] {
-    const startDate = parseISO(filters.dateRange.start)
-    const endDate = parseISO(filters.dateRange.end)
+    const startDate = createLocalDate(filters.dateRange.start)
+    const endDate = createLocalDate(filters.dateRange.end)
     const days = eachDayOfInterval({ start: startDate, end: endDate })
 
     return days.map(day => {
-      const dayStr = format(day, 'yyyy-MM-dd')
+      const dayStr = formatToDateString(day)
       const dayOrders = orders.filter(order => {
-        const orderDate = order.createdAt?.toDate()
-        return orderDate && format(orderDate, 'yyyy-MM-dd') === dayStr
+        const orderDate = order.createdAt instanceof Date ? order.createdAt : safeToDate(order.createdAt)
+        return orderDate && formatToDateString(orderDate) === dayStr
       })
 
       const totalRevenue = dayOrders
@@ -362,13 +469,14 @@ export class ReportsService {
   }
 
   static getDefaultFilters(): ReportsFilters {
+    // Usar fechas locales para evitar problemas de zona horaria
     const today = new Date()
-    const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000)
+    const thirtyDaysAgo = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 30)
 
     return {
       dateRange: {
-        start: format(thirtyDaysAgo, 'yyyy-MM-dd'),
-        end: format(today, 'yyyy-MM-dd')
+        start: formatToDateString(thirtyDaysAgo),
+        end: formatToDateString(today)
       },
       userType: 'all',
       orderStatus: 'all',

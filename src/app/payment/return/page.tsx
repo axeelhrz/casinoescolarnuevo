@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { CheckCircle, XCircle, Clock, AlertCircle, ArrowLeft, Receipt, RefreshCw, Search } from 'lucide-react'
 import { OrderService, OrderStateByChild } from '@/services/orderService'
-import { useAuth } from '@/hooks/useAuth'
+import useAuth from '@/hooks/useAuth'
 
 type PaymentStatus = 'success' | 'failed' | 'pending' | 'cancelled' | 'unknown'
 

@@ -61,7 +61,7 @@ export class ExportUtils {
     }
   }
 
-  // New methods for order exports
+  // Enhanced methods for order exports with kitchen focus
   static async exportOrdersToPDF(orders: AdminOrderView[], metrics: OrderMetrics, filters: OrderFilters, adminUser: AdminUser): Promise<void> {
     try {
       const htmlContent = ExportUtils.generateOrdersPDFContent(orders, metrics, filters, adminUser)

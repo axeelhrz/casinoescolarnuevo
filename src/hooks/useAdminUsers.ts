@@ -118,6 +118,7 @@ export function useAdminUsers(): UseAdminUsersReturn {
         totalUsers: 0,
         activeUsers: 0,
         funcionarios: 0,
+        apoderados: 0,
         estudiantes: 0,
         admins: 0,
         verifiedEmails: 0,

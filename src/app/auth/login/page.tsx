@@ -96,12 +96,12 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
       {/* Subtle Background Elements */}
       <div className="absolute inset-0">
         {/* Soft geometric shapes */}
         <motion.div
-          className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-br from-blue-100/30 to-indigo-100/30 rounded-full blur-3xl"
+          className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-br from-blue-100/30 to-indigo-100/30 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-full blur-3xl"
           animate={{
             scale: [1, 1.1, 1],
             opacity: [0.2, 0.4, 0.2],
@@ -114,7 +114,7 @@ export default function LoginPage() {
         />
         
         <motion.div
-          className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-br from-emerald-100/30 to-teal-100/30 rounded-full blur-3xl"
+          className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-br from-emerald-100/30 to-teal-100/30 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-full blur-3xl"
           animate={{
             scale: [1, 1.2, 1],
             opacity: [0.15, 0.35, 0.15],
@@ -128,7 +128,7 @@ export default function LoginPage() {
         />
 
         {/* Subtle pattern overlay */}
-        <div className="absolute inset-0 opacity-5">
+        <div className="absolute inset-0 opacity-5 dark:opacity-10">
           <div 
             className="w-full h-full"
             style={{
@@ -148,7 +148,7 @@ export default function LoginPage() {
           transition={{ duration: 0.8, ease: "easeOut" }}
           className="w-full max-w-md"
         >
-          <div className="auth-form-container rounded-2xl p-8">
+          <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl rounded-2xl p-8 shadow-2xl border border-white/20 dark:border-slate-700/50">
             
             {/* Header */}
             <motion.div
@@ -157,11 +157,11 @@ export default function LoginPage() {
               transition={{ duration: 0.6, delay: 0.2 }}
               className="text-center mb-8"
             >
-              <h1 className="text-3xl font-light text-slate-800 mb-2 text-elegant">
+              <h1 className="text-3xl font-light text-slate-800 dark:text-slate-100 mb-2 text-elegant">
                 Bienvenido
               </h1>
-              <p className="text-slate-600 text-clean">
-                Inicia sesión en Casino Escolar
+              <p className="text-slate-600 dark:text-slate-300 text-clean">
+                Inicia sesión en Delicias Food Service
               </p>
               
               {/* Elegant separator */}
@@ -171,9 +171,9 @@ export default function LoginPage() {
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.6, delay: 0.4 }}
               >
-                <div className="w-8 h-px bg-slate-300" />
-                <div className="mx-4 w-2 h-2 bg-emerald-400 rounded-full" />
-                <div className="w-8 h-px bg-slate-300" />
+                <div className="w-8 h-px bg-slate-300 dark:bg-slate-600" />
+                <div className="mx-4 w-2 h-2 bg-emerald-400 dark:bg-emerald-500 rounded-full" />
+                <div className="w-8 h-px bg-slate-300 dark:bg-slate-600" />
               </motion.div>
             </motion.div>
 
@@ -182,9 +182,9 @@ export default function LoginPage() {
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mb-6 p-3 bg-red-50 border border-red-200 rounded-lg"
+                className="mb-6 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
               >
-                <p className="text-sm text-red-600 text-clean">{error}</p>
+                <p className="text-sm text-red-600 dark:text-red-400 text-clean">{error}</p>
               </motion.div>
             )}
 
@@ -202,7 +202,7 @@ export default function LoginPage() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.6, delay: 0.6 }}
               >
-                <label className="label-educational">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                   Correo Electrónico
                 </label>
                 <Input
@@ -213,6 +213,7 @@ export default function LoginPage() {
                   placeholder="tu@email.com"
                   required
                   disabled={isLoading}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-300"
                 />
               </motion.div>
 
@@ -222,7 +223,7 @@ export default function LoginPage() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.6, delay: 0.7 }}
               >
-                <label className="label-educational">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                   Contraseña
                 </label>
                 <Input
@@ -233,6 +234,7 @@ export default function LoginPage() {
                   placeholder="••••••••"
                   required
                   disabled={isLoading}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-300"
                 />
               </motion.div>
 
@@ -250,14 +252,14 @@ export default function LoginPage() {
                     checked={formData.rememberMe}
                     onChange={handleInputChange}
                     disabled={isLoading}
-                    className="w-4 h-4 text-emerald-600 bg-white border-slate-300 rounded focus:ring-emerald-500 focus:ring-2"
+                    className="w-4 h-4 text-emerald-600 bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 rounded focus:ring-emerald-500 focus:ring-2"
                   />
-                  <span className="text-sm text-slate-600 text-clean">Recordarme</span>
+                  <span className="text-sm text-slate-600 dark:text-slate-300 text-clean">Recordarme</span>
                 </label>
                 
                 <Link 
                   href="/auth/forgot-password" 
-                  className="text-sm text-emerald-600 hover:text-emerald-700 transition-colors duration-300 text-clean"
+                  className="text-sm text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors duration-300 text-clean"
                 >
                   ¿Olvidaste tu contraseña?
                 </Link>
@@ -277,10 +279,10 @@ export default function LoginPage() {
                   <Button
                     type="submit"
                     disabled={isLoading}
-                    className="btn-auth-primary group relative overflow-hidden"
+                    className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-semibold py-3 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 group relative overflow-hidden"
                   >
                     {isLoading ? (
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center justify-center space-x-2">
                         <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                         <span>Iniciando sesión...</span>
                       </div>
@@ -310,9 +312,9 @@ export default function LoginPage() {
               transition={{ duration: 0.6, delay: 1 }}
               className="flex items-center my-8"
             >
-              <div className="flex-1 h-px bg-slate-200"></div>
-              <span className="px-4 text-sm text-slate-500 text-clean">o</span>
-              <div className="flex-1 h-px bg-slate-200"></div>
+              <div className="flex-1 h-px bg-slate-200 dark:bg-slate-600"></div>
+              <span className="px-4 text-sm text-slate-500 dark:text-slate-400 text-clean">o</span>
+              <div className="flex-1 h-px bg-slate-200 dark:bg-slate-600"></div>
             </motion.div>
 
             {/* Sign Up Link */}
@@ -322,11 +324,11 @@ export default function LoginPage() {
               transition={{ duration: 0.6, delay: 1.1 }}
               className="text-center"
             >
-              <p className="text-sm text-slate-600 text-clean">
+              <p className="text-sm text-slate-600 dark:text-slate-300 text-clean">
                 ¿No tienes una cuenta?{" "}
                 <Link 
                   href="/auth/registro" 
-                  className="text-emerald-600 hover:text-emerald-700 transition-colors duration-300 font-medium"
+                  className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors duration-300 font-medium"
                 >
                   Crear cuenta
                 </Link>
@@ -340,20 +342,20 @@ export default function LoginPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.6, delay: 1.2 }}
-          className="mt-6"
+          className="mt-8"
         >
           <Link href="/">
             <motion.button
               whileHover={{ y: -1, scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="btn-back-home"
+              className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors duration-300 font-medium"
             >
               ← Volver al inicio
             </motion.button>
           </Link>
         </motion.div>
 
-        {/* Bottom accent */}
+        {/* Bottom accent - Más separado */}
         <motion.div
           className="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-center"
           initial={{ opacity: 0 }}
@@ -361,13 +363,13 @@ export default function LoginPage() {
           transition={{ duration: 0.8, delay: 1.4 }}
         >
           <motion.div
-            className="flex items-center space-x-2 text-slate-400 text-sm"
+            className="flex items-center space-x-2 text-slate-400 dark:text-slate-500 text-sm"
             animate={{ y: [0, -4, 0] }}
             transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
           >
-            <div className="w-1 h-1 bg-slate-400 rounded-full" />
-            <span className="text-clean">Sistema de gestión educativa</span>
-            <div className="w-1 h-1 bg-slate-400 rounded-full" />
+            <div className="w-1 h-1 bg-slate-400 dark:bg-slate-500 rounded-full" />
+            <span className="text-clean">Sistema de gestión alimentaria</span>
+            <div className="w-1 h-1 bg-slate-400 dark:bg-slate-500 rounded-full" />
           </motion.div>
         </motion.div>
       </div>

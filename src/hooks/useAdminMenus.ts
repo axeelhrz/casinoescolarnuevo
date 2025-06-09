@@ -1,6 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { AdminMenuService } from '@/services/adminMenuService'
-import { AdminWeekMenu, AdminMenuItem, MenuModalState, MenuOperationResult } from '@/types/adminMenu'
+import { 
+  AdminMenuItem, 
+  AdminWeekMenu, 
+  MenuModalState, 
+  MenuOperationResult 
+} from '@/types/adminMenu'
 import { useToast } from '@/hooks/use-toast'
 
 interface WeekStats {
@@ -8,56 +13,15 @@ interface WeekStats {
   activeItems: number
   publishedItems: number
   daysWithMenus: number
-  totalAlmuerzos: number
-  totalColaciones: number
+  almuerzoCount: number
+  colacionCount: number
 }
 
-interface UseAdminMenusReturn {
-  // Estado
-  currentWeek: string
-  weekMenu: AdminWeekMenu | null
-  weekStats: WeekStats | null
-  isLoading: boolean
-  error: string | null
-  modalState: MenuModalState
-  
-  // Navegación
-  navigateWeek: (direction: 'next' | 'prev') => void
-  getWeekNavigation: () => {
-    currentWeek: string
-    canGoBack: boolean
-    canGoForward: boolean
-    weekLabel: string
-  }
-  
-  // Modal
-  openModal: (
-    mode: 'create' | 'edit',
-    date: string,
-    day: string,
-    type?: 'almuerzo' | 'colacion',
-    item?: AdminMenuItem
-  ) => void
-  closeModal: () => void
-  
-  // CRUD Operations
-  createMenuItem: (itemData: Omit<AdminMenuItem, 'id'>) => Promise<MenuOperationResult>
-  updateMenuItem: (id: string, updates: Partial<AdminMenuItem>) => Promise<MenuOperationResult>
-  deleteMenuItem: (item: AdminMenuItem) => Promise<MenuOperationResult>
-  duplicateWeek: (targetWeek: string) => Promise<MenuOperationResult>
-  
-  // Operaciones de semana
-  toggleWeekPublication: (publish: boolean) => Promise<MenuOperationResult>
-  deleteWeekMenu: () => Promise<MenuOperationResult>
-  
-  // Utilidades
-  refreshMenu: () => void
-}
-
-export function useAdminMenus(): UseAdminMenusReturn {
+export function useAdminMenus() {
   const [currentWeek, setCurrentWeek] = useState<string>('')
   const [weekMenu, setWeekMenu] = useState<AdminWeekMenu | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [weekStats, setWeekStats] = useState<WeekStats | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [modalState, setModalState] = useState<MenuModalState>({
     isOpen: false,
@@ -65,395 +29,59 @@ export function useAdminMenus(): UseAdminMenusReturn {
     date: '',
     day: ''
   })
-  const [weekStats, setWeekStats] = useState<WeekStats | null>(null)
+
   const { toast } = useToast()
 
+  // Cargar datos del menú semanal
   const loadWeekMenu = useCallback(async (weekStart: string) => {
-    if (!weekStart) {
-      setError('Fecha de semana no válida')
-      setIsLoading(false)
-      return
-    }
+    if (!weekStart) return
+
+    setIsLoading(true)
+    setError(null)
 
     try {
-      setIsLoading(true)
-      setError(null)
-      
-      // Cargar menú y estadísticas en paralelo
-      const [menu, stats] = await Promise.all([
+      const [menuData, statsData] = await Promise.all([
         AdminMenuService.getWeeklyMenu(weekStart),
         AdminMenuService.getWeekStats(weekStart)
       ])
+
+      setWeekMenu(menuData)
       
-      if (menu) {
-        setWeekMenu(menu)
-      } else {
-        throw new Error('No se pudo cargar el menú')
-      }
-      
-      if (stats) {
-        // Transform the stats to match our interface
-        const transformedStats: WeekStats = {
-          totalItems: stats.totalItems,
-          activeItems: stats.activeItems,
-          publishedItems: stats.publishedItems,
-          daysWithMenus: stats.daysWithMenus,
-          totalAlmuerzos: stats.almuerzoCount,
-          totalColaciones: stats.colacionCount
-        }
-        setWeekStats(transformedStats)
+      if (statsData) {
+        setWeekStats({
+          totalItems: statsData.totalItems,
+          activeItems: statsData.activeDays,
+          publishedItems: statsData.publishedItems,
+          daysWithMenus: statsData.activeDays,
+          almuerzoCount: statsData.almuerzos,
+          colacionCount: statsData.colaciones
+        })
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Error al cargar el menú'
       console.error('Error loading week menu:', err)
-      setError(errorMessage)
+      setError('Error al cargar el menú semanal')
       toast({
-        title: 'Error',
-        description: errorMessage,
-        variant: 'destructive'
+        title: "Error",
+        description: "Error al cargar el menú semanal",
+        variant: "destructive",
       })
     } finally {
       setIsLoading(false)
     }
   }, [toast])
 
-  // Inicializar con la semana actual
-  useEffect(() => {
-    try {
-      const currentWeekStart = AdminMenuService.getCurrentWeekStart()
-      if (currentWeekStart) {
-        setCurrentWeek(currentWeekStart)
-      } else {
-        throw new Error('No se pudo obtener la semana actual')
-      }
-    } catch (err) {
-      console.error('Error initializing current week:', err)
-      setError('Error al inicializar la semana actual')
-      // Fallback: usar fecha actual
-      const fallbackDate = new Date().toISOString().split('T')[0]
-      setCurrentWeek(fallbackDate)
-    }
-  }, [])
+  // Navegar entre semanas
+  const navigateWeek = useCallback((direction: 'prev' | 'next') => {
+    if (!currentWeek) return
 
-  // Cargar menú cuando cambia la semana
-  useEffect(() => {
-    if (currentWeek) {
-      loadWeekMenu(currentWeek)
-    }
-  }, [currentWeek, loadWeekMenu])
+    const newWeek = direction === 'next' 
+      ? AdminMenuService.getNextWeek(currentWeek)
+      : AdminMenuService.getPreviousWeek(currentWeek)
+    
+    setCurrentWeek(newWeek)
+  }, [currentWeek])
 
-  const navigateWeek = useCallback((direction: 'next' | 'prev') => {
-    if (!currentWeek) {
-      toast({
-        title: 'Error',
-        description: 'No hay semana actual definida',
-        variant: 'destructive'
-      })
-      return
-    }
-
-    try {
-      const navigation = AdminMenuService.getWeekNavigation(currentWeek)
-      
-      if (direction === 'next' && navigation.canGoForward) {
-        const nextWeek = AdminMenuService.getNextWeek(currentWeek)
-        if (nextWeek && nextWeek !== currentWeek) {
-          setCurrentWeek(nextWeek)
-        }
-      } else if (direction === 'prev' && navigation.canGoBack) {
-        const prevWeek = AdminMenuService.getPreviousWeek(currentWeek)
-        if (prevWeek && prevWeek !== currentWeek) {
-          setCurrentWeek(prevWeek)
-        }
-      }
-    } catch (err) {
-      console.error('Error navigating week:', err)
-      toast({
-        title: 'Error',
-        description: 'Error al navegar entre semanas',
-        variant: 'destructive'
-      })
-    }
-  }, [currentWeek, toast])
-
-  const openModal = useCallback((
-    mode: 'create' | 'edit',
-    date: string,
-    day: string,
-    type?: 'almuerzo' | 'colacion',
-    item?: AdminMenuItem
-  ) => {
-    setModalState({
-      isOpen: true,
-      mode,
-      date,
-      day,
-      type,
-      item
-    })
-  }, [])
-
-  const closeModal = useCallback(() => {
-    setModalState({
-      isOpen: false,
-      mode: 'create',
-      date: '',
-      day: ''
-    })
-  }, [])
-
-  const createMenuItem = useCallback(async (itemData: Omit<AdminMenuItem, 'id'>): Promise<MenuOperationResult> => {
-    try {
-      const result = await AdminMenuService.createMenuItem(itemData)
-      
-      if (result.success) {
-        toast({
-          title: 'Éxito',
-          description: result.message
-        })
-        // Recargar el menú para mostrar el nuevo item
-        if (currentWeek) {
-          await loadWeekMenu(currentWeek)
-        }
-        closeModal()
-      } else {
-        toast({
-          title: 'Error',
-          description: result.message,
-          variant: 'destructive'
-        })
-      }
-      
-      return result
-    } catch (error) {
-      const errorMessage = 'Error al crear el menú'
-      console.error('Error creating menu item:', error)
-      toast({
-        title: 'Error',
-        description: errorMessage,
-        variant: 'destructive'
-      })
-      return {
-        success: false,
-        message: errorMessage
-      }
-    }
-  }, [currentWeek, loadWeekMenu, closeModal, toast])
-
-  const updateMenuItem = useCallback(async (id: string, updates: Partial<AdminMenuItem>): Promise<MenuOperationResult> => {
-    try {
-      const result = await AdminMenuService.updateMenuItem(id, updates)
-      
-      if (result.success) {
-        toast({
-          title: 'Éxito',
-          description: result.message
-        })
-        // Recargar el menú para mostrar los cambios
-        if (currentWeek) {
-          await loadWeekMenu(currentWeek)
-        }
-        closeModal()
-      } else {
-        toast({
-          title: 'Error',
-          description: result.message,
-          variant: 'destructive'
-        })
-      }
-      
-      return result
-    } catch (error) {
-      const errorMessage = 'Error al actualizar el menú'
-      console.error('Error updating menu item:', error)
-      toast({
-        title: 'Error',
-        description: errorMessage,
-        variant: 'destructive'
-      })
-      return {
-        success: false,
-        message: errorMessage
-      }
-    }
-  }, [currentWeek, loadWeekMenu, closeModal, toast])
-
-  const deleteMenuItem = useCallback(async (item: AdminMenuItem): Promise<MenuOperationResult> => {
-    try {
-      if (!item.id) {
-        return {
-          success: false,
-          message: 'ID del menú no válido'
-        }
-      }
-
-      const result = await AdminMenuService.deleteMenuItem(item.id)
-      
-      if (result.success) {
-        toast({
-          title: 'Éxito',
-          description: result.message
-        })
-        // Recargar el menú para reflejar la eliminación
-        if (currentWeek) {
-          await loadWeekMenu(currentWeek)
-        }
-      } else {
-        toast({
-          title: 'Error',
-          description: result.message,
-          variant: 'destructive'
-        })
-      }
-      
-      return result
-    } catch (error) {
-      const errorMessage = 'Error al eliminar el menú'
-      console.error('Error deleting menu item:', error)
-      toast({
-        title: 'Error',
-        description: errorMessage,
-        variant: 'destructive'
-      })
-      return {
-        success: false,
-        message: errorMessage
-      }
-    }
-  }, [currentWeek, loadWeekMenu, toast])
-
-  const duplicateWeek = useCallback(async (targetWeek: string): Promise<MenuOperationResult> => {
-    try {
-      if (!currentWeek) {
-        return {
-          success: false,
-          message: 'No hay semana actual definida'
-        }
-      }
-
-      const result = await AdminMenuService.duplicateWeekMenu(currentWeek, targetWeek)
-      
-      toast({
-        title: result.success ? 'Éxito' : 'Error',
-        description: result.message,
-        variant: result.success ? 'default' : 'destructive'
-      })
-      
-      return result
-    } catch (error) {
-      const errorMessage = 'Error al duplicar el menú semanal'
-      console.error('Error duplicating week:', error)
-      toast({
-        title: 'Error',
-        description: errorMessage,
-        variant: 'destructive'
-      })
-      return {
-        success: false,
-        message: errorMessage
-      }
-    }
-  }, [currentWeek, toast])
-
-  const toggleWeekPublication = useCallback(async (publish: boolean): Promise<MenuOperationResult> => {
-    try {
-      if (!currentWeek) {
-        return {
-          success: false,
-          message: 'No hay semana actual definida'
-        }
-      }
-
-      const result = await AdminMenuService.toggleWeekMenuPublication(currentWeek, publish)
-      
-      if (result.success) {
-        toast({
-          title: 'Éxito',
-          description: result.message
-        })
-        // Recargar el menú para reflejar los cambios
-        await loadWeekMenu(currentWeek)
-      } else {
-        toast({
-          title: 'Error',
-          description: result.message,
-          variant: 'destructive'
-        })
-      }
-      
-      return result
-    } catch (error) {
-      const errorMessage = 'Error al cambiar el estado de publicación'
-      console.error('Error toggling publication:', error)
-      toast({
-        title: 'Error',
-        description: errorMessage,
-        variant: 'destructive'
-      })
-      return {
-        success: false,
-        message: errorMessage
-      }
-    }
-  }, [currentWeek, loadWeekMenu, toast])
-
-  const deleteWeekMenu = useCallback(async (): Promise<MenuOperationResult> => {
-    try {
-      if (!currentWeek) {
-        return {
-          success: false,
-          message: 'No hay semana actual definida'
-        }
-      }
-
-      const result = await AdminMenuService.deleteWeekMenu(currentWeek)
-      
-      if (result.success) {
-        toast({
-          title: 'Éxito',
-          description: result.message
-        })
-        // Recargar el menú para reflejar los cambios
-        await loadWeekMenu(currentWeek)
-      } else {
-        toast({
-          title: 'Error',
-          description: result.message,
-          variant: 'destructive'
-        })
-      }
-      
-      return result
-    } catch (error) {
-      const errorMessage = 'Error al eliminar el menú semanal'
-      console.error('Error deleting week menu:', error)
-      toast({
-        title: 'Error',
-        description: errorMessage,
-        variant: 'destructive'
-      })
-      return {
-        success: false,
-        message: errorMessage
-      }
-    }
-  }, [currentWeek, loadWeekMenu, toast])
-
-  const refreshMenu = useCallback(() => {
-    if (currentWeek) {
-      loadWeekMenu(currentWeek)
-    } else {
-      // Reinicializar si no hay semana actual
-      try {
-        const newCurrentWeek = AdminMenuService.getCurrentWeekStart()
-        setCurrentWeek(newCurrentWeek)
-      } catch (err) {
-        console.error('Error refreshing menu:', err)
-        setError('Error al actualizar el menú')
-      }
-    }
-  }, [currentWeek, loadWeekMenu])
-
+  // Obtener navegación de semana
   const getWeekNavigation = useCallback(() => {
     try {
       if (!currentWeek) {
@@ -478,6 +106,355 @@ export function useAdminMenus(): UseAdminMenusReturn {
     }
   }, [currentWeek])
 
+  // Abrir modal
+  const openModal = useCallback((
+    mode: 'create' | 'edit' | 'view',
+    date: string,
+    day: string,
+    type?: 'almuerzo' | 'colacion',
+    item?: AdminMenuItem
+  ) => {
+    setModalState({
+      isOpen: true,
+      mode,
+      date,
+      day,
+      type,
+      item
+    })
+  }, [])
+
+  // Cerrar modal
+  const closeModal = useCallback(() => {
+    setModalState(prev => ({ ...prev, isOpen: false }))
+  }, [])
+
+  // Crear item de menú
+  const createMenuItem = useCallback(async (itemData: Omit<AdminMenuItem, 'id'>): Promise<MenuOperationResult> => {
+    try {
+      const result = await AdminMenuService.createMenuItem(
+        itemData.weekStart,
+        itemData.date,
+        itemData.day,
+        itemData.type,
+        itemData.code,
+        itemData.title,
+        itemData.description || '',
+        itemData.active,
+        itemData.price
+      )
+      
+      if (result.success) {
+        await loadWeekMenu(currentWeek)
+        toast({
+          title: "Menú creado",
+          description: result.message,
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: result.message,
+          variant: "destructive",
+        })
+      }
+      
+      return result
+    } catch (error) {
+      console.error('Error creating menu item:', error)
+      const errorResult = {
+        success: false,
+        message: 'Error al crear el menú'
+      }
+      
+      toast({
+        title: "Error",
+        description: errorResult.message,
+        variant: "destructive",
+      })
+      
+      return errorResult
+    }
+  }, [currentWeek, loadWeekMenu, toast])
+
+  // Actualizar item de menú
+  const updateMenuItem = useCallback(async (id: string, updates: Partial<AdminMenuItem>): Promise<MenuOperationResult> => {
+    try {
+      const result = await AdminMenuService.updateMenuItem(id, updates)
+      
+      if (result.success) {
+        await loadWeekMenu(currentWeek)
+        toast({
+          title: "Menú actualizado",
+          description: result.message,
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: result.message,
+          variant: "destructive",
+        })
+      }
+      
+      return result
+    } catch (error) {
+      console.error('Error updating menu item:', error)
+      const errorResult = {
+        success: false,
+        message: 'Error al actualizar el menú'
+      }
+      
+      toast({
+        title: "Error",
+        description: errorResult.message,
+        variant: "destructive",
+      })
+      
+      return errorResult
+    }
+  }, [currentWeek, loadWeekMenu, toast])
+
+  // Eliminar item de menú
+  const deleteMenuItem = useCallback(async (id: string): Promise<MenuOperationResult> => {
+    try {
+      const result = await AdminMenuService.deleteMenuItem(id)
+      
+      if (result.success) {
+        await loadWeekMenu(currentWeek)
+        toast({
+          title: "Menú eliminado",
+          description: result.message,
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: result.message,
+          variant: "destructive",
+        })
+      }
+      
+      return result
+    } catch (error) {
+      console.error('Error deleting menu item:', error)
+      const errorResult = {
+        success: false,
+        message: 'Error al eliminar el menú'
+      }
+      
+      toast({
+        title: "Error",
+        description: errorResult.message,
+        variant: "destructive",
+      })
+      
+      return errorResult
+    }
+  }, [currentWeek, loadWeekMenu, toast])
+
+  // Duplicar semana
+  const duplicateWeek = useCallback(async (sourceWeek: string, targetWeek: string): Promise<MenuOperationResult> => {
+    try {
+      const result = await AdminMenuService.duplicateWeekMenu(sourceWeek, targetWeek)
+      
+      if (result.success) {
+        await loadWeekMenu(currentWeek)
+        toast({
+          title: "Menú duplicado",
+          description: result.message,
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: result.message,
+          variant: "destructive",
+        })
+      }
+      
+      return result
+    } catch (error) {
+      console.error('Error duplicating week menu:', error)
+      const errorResult = {
+        success: false,
+        message: 'Error al duplicar el menú'
+      }
+      
+      toast({
+        title: "Error",
+        description: errorResult.message,
+        variant: "destructive",
+      })
+      
+      return errorResult
+    }
+  }, [currentWeek, loadWeekMenu, toast])
+
+  // Crear colaciones predeterminadas para la semana
+  const createDefaultColacionesWeek = useCallback(async (): Promise<MenuOperationResult> => {
+    try {
+      const result = await AdminMenuService.createDefaultColacionesWeek(currentWeek)
+      
+      if (result.success) {
+        await loadWeekMenu(currentWeek)
+        toast({
+          title: "Colaciones creadas",
+          description: result.message,
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: result.message,
+          variant: "destructive",
+        })
+      }
+      
+      return result
+    } catch (error) {
+      console.error('Error creating default colaciones week:', error)
+      const errorResult = {
+        success: false,
+        message: 'Error al crear las colaciones predeterminadas'
+      }
+      
+      toast({
+        title: "Error",
+        description: errorResult.message,
+        variant: "destructive",
+      })
+      
+      return errorResult
+    }
+  }, [currentWeek, loadWeekMenu, toast])
+
+  // Crear colaciones predeterminadas para un día
+  const createDefaultColacionesDay = useCallback(async (date: string, day: string): Promise<MenuOperationResult> => {
+    try {
+      const result = await AdminMenuService.createDefaultColacionesDay(currentWeek, date, day)
+      
+      if (result.success) {
+        await loadWeekMenu(currentWeek)
+        toast({
+          title: "Colaciones creadas",
+          description: result.message,
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: result.message,
+          variant: "destructive",
+        })
+      }
+      
+      return result
+    } catch (error) {
+      console.error('Error creating default colaciones day:', error)
+      const errorResult = {
+        success: false,
+        message: 'Error al crear las colaciones predeterminadas'
+      }
+      
+      toast({
+        title: "Error",
+        description: errorResult.message,
+        variant: "destructive",
+      })
+      
+      return errorResult
+    }
+  }, [currentWeek, loadWeekMenu, toast])
+
+  // Alternar publicación de semana
+  const toggleWeekPublication = useCallback(async (publish: boolean): Promise<MenuOperationResult> => {
+    try {
+      const result = await AdminMenuService.toggleWeekPublication(currentWeek, publish)
+      
+      if (result.success) {
+        await loadWeekMenu(currentWeek)
+        toast({
+          title: publish ? "Menú publicado" : "Menú despublicado",
+          description: result.message,
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: result.message,
+          variant: "destructive",
+        })
+      }
+      
+      return result
+    } catch (error) {
+      console.error('Error toggling week publication:', error)
+      const errorResult = {
+        success: false,
+        message: 'Error al cambiar el estado de publicación'
+      }
+      
+      toast({
+        title: "Error",
+        description: errorResult.message,
+        variant: "destructive",
+      })
+      
+      return errorResult
+    }
+  }, [currentWeek, loadWeekMenu, toast])
+
+  // Eliminar menú semanal
+  const deleteWeekMenu = useCallback(async (): Promise<MenuOperationResult> => {
+    try {
+      const result = await AdminMenuService.deleteWeekMenu(currentWeek)
+      
+      if (result.success) {
+        await loadWeekMenu(currentWeek)
+        toast({
+          title: "Menú eliminado",
+          description: result.message,
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: result.message,
+          variant: "destructive",
+        })
+      }
+      
+      return result
+    } catch (error) {
+      console.error('Error deleting week menu:', error)
+      const errorResult = {
+        success: false,
+        message: 'Error al eliminar el menú semanal'
+      }
+      
+      toast({
+        title: "Error",
+        description: errorResult.message,
+        variant: "destructive",
+      })
+      
+      return errorResult
+    }
+  }, [currentWeek, loadWeekMenu, toast])
+
+  // Refrescar menú
+  const refreshMenu = useCallback(() => {
+    if (currentWeek) {
+      loadWeekMenu(currentWeek)
+    }
+  }, [currentWeek, loadWeekMenu])
+
+  // Inicializar semana actual
+  useEffect(() => {
+    const weekStart = AdminMenuService.getCurrentWeekStart()
+    setCurrentWeek(weekStart)
+  }, [])
+
+  // Cargar menú cuando cambia la semana
+  useEffect(() => {
+    if (currentWeek) {
+      loadWeekMenu(currentWeek)
+    }
+  }, [currentWeek, loadWeekMenu])
+
   return {
     // Estado
     currentWeek,
@@ -500,6 +477,10 @@ export function useAdminMenus(): UseAdminMenusReturn {
     updateMenuItem,
     deleteMenuItem,
     duplicateWeek,
+    
+    // Colaciones predeterminadas
+    createDefaultColacionesWeek,
+    createDefaultColacionesDay,
     
     // Operaciones de semana
     toggleWeekPublication,

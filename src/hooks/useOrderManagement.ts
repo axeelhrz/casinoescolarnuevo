@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useOrderStore } from '@/store/orderStore'
-import { useAuth } from '@/hooks/useAuth'
+import useAuth from '@/hooks/useAuth'
 import { useMultiWeekMenu } from '@/hooks/useMultiWeekMenu'
 import { MenuIntegrationService } from '@/services/menuIntegrationService'
 import { OrderService } from '@/services/orderService'

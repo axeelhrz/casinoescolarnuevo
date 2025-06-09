@@ -4,8 +4,9 @@ import { useState, useEffect } from 'react'
 import { updateProfile, updateEmail, sendEmailVerification } from 'firebase/auth'
 import { doc, updateDoc } from 'firebase/firestore'
 import { auth, db } from '@/app/lib/firebase'
-import { useAuth } from '@/hooks/useAuth'
+import useAuth from '@/hooks/useAuth'
 import { Child } from '@/types/panel'
+import { SchoolLevel, migrateCourseFormat, validateCourseFormat } from '@/lib/courseUtils'
 
 interface ProfileFormData {
   firstName: string
@@ -16,7 +17,7 @@ interface ProfileFormData {
 
 interface ExtendedChild extends Child {
   edad: number
-  level: 'basico' | 'medio'
+  level: SchoolLevel
 }
 
 interface UseProfileFormReturn {
@@ -27,13 +28,53 @@ interface UseProfileFormReturn {
   hasChanges: boolean
   emailVerified: boolean
   errors: Record<string, string>
+  isResendingVerification: boolean
+  canResendVerification: boolean
+  resendCooldownTime: number
   updateFormData: (field: keyof ProfileFormData, value: string) => void
   addChild: () => void
-  updateChild: (id: string, field: keyof ExtendedChild, value: string | number | boolean) => void
+  updateChild: (id: string, field: keyof ExtendedChild, value: string | number | boolean | SchoolLevel) => void
   removeChild: (id: string) => void
   saveChanges: () => Promise<boolean>
   resendEmailVerification: () => Promise<boolean>
   validateForm: () => boolean
+}
+
+const RESEND_COOLDOWN_SECONDS = 60 // 1 minute cooldown
+const MAX_RETRY_ATTEMPTS = 3
+const RETRY_DELAYS = [1000, 3000, 5000] // Progressive delays in milliseconds
+
+// Helper function to safely trim strings
+function safeTrim(value: string | number | null | undefined): string {
+  if (typeof value === 'string') {
+    return value.trim()
+  }
+  return String(value || '').trim()
+}
+
+// Helper function to clean data for Firestore (remove undefined values)
+function cleanDataForFirestore<T extends Record<string, unknown>>(obj: T): Partial<T> {
+  if (obj === null || obj === undefined) {
+    return {}
+  }
+  
+  const cleaned: Partial<T> = {}
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      if (Array.isArray(value)) {
+        cleaned[key as keyof T] = value.map(item => 
+          typeof item === 'object' && item !== null 
+            ? cleanDataForFirestore(item as Record<string, unknown>)
+            : item
+        ) as T[keyof T]
+      } else if (typeof value === 'object' && value !== null) {
+        cleaned[key as keyof T] = cleanDataForFirestore(value as Record<string, unknown>) as T[keyof T]
+      } else {
+        cleaned[key as keyof T] = value as T[keyof T]
+      }
+    }
+  }
+  return cleaned
 }
 
 export function useProfileForm(): UseProfileFormReturn {
@@ -56,6 +97,8 @@ export function useProfileForm(): UseProfileFormReturn {
   const [isSaving, setIsSaving] = useState(false)
   const [emailVerified, setEmailVerified] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [isResendingVerification, setIsResendingVerification] = useState(false)
+  const [resendCooldownTime, setResendCooldownTime] = useState<number>(0)
 
   // Cargar datos del usuario
   useEffect(() => {
@@ -64,18 +107,28 @@ export function useProfileForm(): UseProfileFormReturn {
         firstName: user.firstName || '',
         lastName: user.lastName || '',
         email: user.email || '',
-        phone: (user as { phone?: string }).phone || ''
+        phone: user.phone || ''
       }
       
-      // Transform children to include edad and level properties
+      // Transform children to include edad and level properties with migration
       const transformedChildren: ExtendedChild[] = (user.children || []).map(child => {
-        const childWithAge = child as Child & { edad?: number; age?: number; level?: 'basico' | 'medio' }
+        // Migrar curso y nivel si es necesario
+        const { curso: migratedCourse, level: migratedLevel } = migrateCourseFormat(
+          child.curso || '',
+          child.level as SchoolLevel
+        )
+        
         return {
-          ...child,
-          edad: childWithAge.edad || childWithAge.age || 0,
-          level: childWithAge.level || 'basico'
+          id: child.id || Date.now().toString(),
+          name: child.name || '',
+          curso: migratedCourse,
+          rut: child.rut || undefined,
+          active: child.active !== undefined ? child.active : true,
+          edad: child.edad || child.age || 0,
+          age: child.age || child.edad || 0,
+          level: migratedLevel
         }
-      })
+      }).filter(child => child.name.trim() !== '') // Solo incluir hijos con nombre
       
       setFormData(userData)
       setOriginalData(userData)
@@ -85,6 +138,29 @@ export function useProfileForm(): UseProfileFormReturn {
       setIsLoading(false)
     }
   }, [user])
+
+  // Cooldown timer effect
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null
+    
+    if (resendCooldownTime > 0) {
+      interval = setInterval(() => {
+        setResendCooldownTime(prev => {
+          if (prev <= 1) {
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+    }
+
+    return () => {
+      if (interval) clearInterval(interval)
+    }
+  }, [resendCooldownTime])
+
+  // Check if user can resend verification
+  const canResendVerification = resendCooldownTime === 0 && !isResendingVerification
 
   // Verificar si hay cambios
   const hasChanges = 
@@ -104,18 +180,36 @@ export function useProfileForm(): UseProfileFormReturn {
       id: Date.now().toString(),
       name: '',
       curso: '',
-      rut: undefined,
       active: true,
       edad: 0,
-      level: 'basico'
+      age: 0,
+      level: 'Lower School'
+      // Note: rut is omitted instead of being undefined
     }
     setChildren(prev => [...prev, newChild])
   }
 
-  const updateChild = (id: string, field: keyof ExtendedChild, value: string | number | boolean) => {
-    setChildren(prev => prev.map(child => 
-      child.id === id ? { ...child, [field]: value } : child
-    ))
+  const updateChild = (id: string, field: keyof ExtendedChild, value: string | number | boolean | SchoolLevel) => {
+    setChildren(prev => prev.map(child => {
+      if (child.id === id) {
+        const updatedChild = { ...child, [field]: value }
+        
+        // Sincronizar age y edad
+        if (field === 'edad') {
+          updatedChild.age = value as number
+        } else if (field === 'age') {
+          updatedChild.edad = value as number
+        }
+        
+        // Si se cambia el nivel, limpiar el curso para que el usuario seleccione uno nuevo
+        if (field === 'level') {
+          updatedChild.curso = ''
+        }
+        
+        return updatedChild
+      }
+      return child
+    }))
     
     // Clear error for this field
     const errorKey = `child_${id}_${field}`
@@ -143,29 +237,51 @@ export function useProfileForm(): UseProfileFormReturn {
     const newErrors: Record<string, string> = {}
 
     // Validar campos requeridos
-    if (!formData.firstName.trim()) {
+    if (!safeTrim(formData.firstName)) {
       newErrors.firstName = 'El nombre es requerido'
     }
-    if (!formData.lastName.trim()) {
+    if (!safeTrim(formData.lastName)) {
       newErrors.lastName = 'El apellido es requerido'
     }
-    if (!formData.email.trim()) {
+    if (!safeTrim(formData.email)) {
       newErrors.email = 'El correo electrónico es requerido'
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(safeTrim(formData.email))) {
       newErrors.email = 'Formato de correo electrónico inválido'
+    }
+
+    // Validar teléfono si se proporciona
+    const phoneValue = safeTrim(formData.phone)
+    if (phoneValue) {
+      // Basic phone validation - allow various formats
+      const phoneRegex = /^[\+]?[0-9\s\-\(\)]{8,15}$/
+      if (!phoneRegex.test(phoneValue)) {
+        newErrors.phone = 'Formato de teléfono inválido'
+      }
     }
 
     // Validar hijos si es apoderado
     if (user?.tipoUsuario === 'apoderado' && children.length > 0) {
       children.forEach((child, index) => {
-        if (!child.name.trim()) {
+        if (!safeTrim(child.name)) {
           newErrors[`child_${child.id}_name`] = `Nombre del hijo ${index + 1} es requerido`
         }
         if (!child.edad || child.edad < 1 || child.edad > 18) {
           newErrors[`child_${child.id}_edad`] = `Edad del hijo ${index + 1} debe estar entre 1 y 18 años`
         }
-        if (!child.curso.trim()) {
+        if (!safeTrim(child.curso)) {
           newErrors[`child_${child.id}_curso`] = `Curso del hijo ${index + 1} es requerido`
+        } else if (!validateCourseFormat(child.curso, child.level)) {
+          newErrors[`child_${child.id}_curso`] = `Formato de curso inválido para hijo ${index + 1}. Debe seguir el formato del nivel seleccionado.`
+        }
+        if (!child.level) {
+          newErrors[`child_${child.id}_level`] = `Nivel educativo del hijo ${index + 1} es requerido`
+        }
+        // Validar RUT si se proporciona
+        if (child.rut && safeTrim(child.rut)) {
+          const rutRegex = /^[0-9]+-[0-9kK]$/
+          if (!rutRegex.test(safeTrim(child.rut))) {
+            newErrors[`child_${child.id}_rut`] = `Formato de RUT inválido para hijo ${index + 1}. Debe ser: 12345678-9`
+          }
         }
       })
     }
@@ -184,46 +300,99 @@ export function useProfileForm(): UseProfileFormReturn {
       const currentUser = auth.currentUser
       const userDocRef = doc(db, 'users', user.id)
 
+      // Safely trim form data
+      const trimmedFirstName = safeTrim(formData.firstName)
+      const trimmedLastName = safeTrim(formData.lastName)
+      const trimmedEmail = safeTrim(formData.email)
+      const trimmedPhone = safeTrim(formData.phone)
+
       // Actualizar perfil en Firebase Auth si cambió el nombre
-      if (formData.firstName !== originalData.firstName || formData.lastName !== originalData.lastName) {
+      if (trimmedFirstName !== safeTrim(originalData.firstName) || 
+          trimmedLastName !== safeTrim(originalData.lastName)) {
         await updateProfile(currentUser, {
-          displayName: `${formData.firstName} ${formData.lastName}`
+          displayName: `${trimmedFirstName} ${trimmedLastName}`
         })
       }
 
       // Actualizar email si cambió
-      if (formData.email !== originalData.email) {
-        await updateEmail(currentUser, formData.email)
+      if (trimmedEmail !== safeTrim(originalData.email)) {
+        await updateEmail(currentUser, trimmedEmail)
         await sendEmailVerification(currentUser)
         setEmailVerified(false)
       }
 
       // Transform children back to the format expected by the database
-      const transformedChildren = children.map(child => ({
-        id: child.id,
-        name: child.name,
-        curso: child.curso,
-        rut: child.rut,
-        active: child.active,
-        age: child.edad, // Map edad back to age
-        level: child.level
-      }))
+      const transformedChildren = children.map(child => {
+        const childName = safeTrim(child.name)
+        const childCurso = safeTrim(child.curso)
+        const childRut = child.rut ? safeTrim(child.rut) : undefined
+        
+        const childData: {
+          id: string
+          name: string
+          curso: string
+          active: boolean
+          age: number
+          edad: number
+          level: SchoolLevel
+          rut?: string
+        } = {
+          id: child.id,
+          name: childName,
+          curso: childCurso,
+          active: child.active !== undefined ? child.active : true,
+          age: child.edad || child.age || 0,
+          edad: child.edad || child.age || 0,
+          level: child.level
+        }
+        
+        // Only include rut if it has a value
+        if (childRut) {
+          childData.rut = childRut
+        }
+        
+        return childData
+      }).filter(child => child.name.trim() !== '') // Solo guardar hijos con nombre
 
-      // Actualizar documento en Firestore
-      const updateData = {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-        phone: formData.phone,
+      // Prepare update data, ensuring no undefined values
+      const updateData: {
+        firstName: string
+        lastName: string
+        email: string
+        children: typeof transformedChildren
+        updatedAt: Date
+        phone?: string
+      } = {
+        firstName: trimmedFirstName,
+        lastName: trimmedLastName,
+        email: trimmedEmail,
         children: transformedChildren,
         updatedAt: new Date()
       }
 
-      await updateDoc(userDocRef, updateData)
+      // Only include phone if it has a value
+      if (trimmedPhone) {
+        updateData.phone = trimmedPhone
+      }
+
+      // Clean the data to remove any undefined values and ensure proper typing
+      const cleanedUpdateData = cleanDataForFirestore(updateData)
+
+      console.log('Saving data to Firestore:', cleanedUpdateData) // Debug log
+
+      await updateDoc(userDocRef, cleanedUpdateData)
 
       // Actualizar datos originales
-      setOriginalData(formData)
+      setOriginalData({
+        firstName: trimmedFirstName,
+        lastName: trimmedLastName,
+        email: trimmedEmail,
+        phone: trimmedPhone
+      })
       setOriginalChildren([...children])
+
+      // Clear any previous errors
+      setErrors({})
 
       return true
     } catch (error) {
@@ -236,6 +405,10 @@ export function useProfileForm(): UseProfileFormReturn {
         setErrors({ email: 'Formato de correo electrónico inválido' })
       } else if (firebaseError.code === 'auth/requires-recent-login') {
         setErrors({ email: 'Debes volver a iniciar sesión para cambiar tu correo' })
+      } else if (error instanceof TypeError && error.message.includes('trim')) {
+        setErrors({ general: 'Error en el formato de los datos. Verifica que todos los campos estén completos.' })
+      } else if (firebaseError.message?.includes('invalid data')) {
+        setErrors({ general: 'Error en los datos proporcionados. Verifica que todos los campos estén completos correctamente.' })
       } else {
         setErrors({ general: 'Error al guardar los cambios. Intenta nuevamente.' })
       }
@@ -245,15 +418,79 @@ export function useProfileForm(): UseProfileFormReturn {
     }
   }
 
+  const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
   const resendEmailVerification = async (): Promise<boolean> => {
-    if (!auth.currentUser) return false
+    if (!auth.currentUser || !canResendVerification) {
+      return false
+    }
+
+    setIsResendingVerification(true)
+    setErrors(prev => ({ ...prev, verification: '' })) // Clear previous verification errors
 
     try {
-      await sendEmailVerification(auth.currentUser)
-      return true
+      // Attempt to send verification with retry logic
+      let lastError: { code?: string; message?: string } | null = null
+      
+      for (let attempt = 0; attempt < MAX_RETRY_ATTEMPTS; attempt++) {
+        try {
+          await sendEmailVerification(auth.currentUser)
+          
+          // Success - set cooldown
+          setResendCooldownTime(RESEND_COOLDOWN_SECONDS)
+          return true
+        } catch (error) {
+          lastError = error as { code?: string; message?: string }
+          const firebaseError = error as { code?: string; message?: string }
+          
+          // If it's a rate limiting error, don't retry immediately
+          if (firebaseError.code === 'auth/too-many-requests') {
+            // Set a longer cooldown for rate limiting
+            const cooldownTime = Math.min(RESEND_COOLDOWN_SECONDS * (attempt + 1), 300) // Max 5 minutes
+            setResendCooldownTime(cooldownTime)
+            setErrors(prev => ({ ...prev,
+              verification: `Demasiadas solicitudes. Intenta nuevamente en ${cooldownTime} segundos.` 
+            }))
+            break // Don't retry for rate limiting
+          }
+          
+          // Wait before retrying for other errors
+          if (attempt < MAX_RETRY_ATTEMPTS - 1) {
+            await sleep(RETRY_DELAYS[attempt])
+          }
+        }
+      }
+      
+      // If we get here, all attempts failed
+      const firebaseError = lastError as { code?: string; message?: string }
+      
+      if (firebaseError.code === 'auth/too-many-requests') {
+        setErrors({ 
+          verification: 'Se han enviado demasiadas solicitudes de verificación. Espera un momento antes de intentar nuevamente.' 
+        })
+      } else if (firebaseError.code === 'auth/user-not-found') {
+        setErrors({ 
+          verification: 'Usuario no encontrado. Intenta cerrar sesión e iniciar sesión nuevamente.' 
+        })
+      } else if (firebaseError.code === 'auth/invalid-email') {
+        setErrors({ 
+          verification: 'El correo electrónico no es válido.' 
+        })
+      } else {
+        setErrors({ 
+          verification: 'Error al enviar el correo de verificación. Verifica tu conexión a internet e intenta nuevamente.' 
+        })
+      }
+      
+      return false
     } catch (error) {
       console.error('Error al reenviar verificación:', error)
+      setErrors({ 
+        verification: 'Error inesperado. Intenta nuevamente más tarde.' 
+      })
       return false
+    } finally {
+      setIsResendingVerification(false)
     }
   }
 
@@ -265,6 +502,9 @@ export function useProfileForm(): UseProfileFormReturn {
     hasChanges,
     emailVerified,
     errors,
+    isResendingVerification,
+    canResendVerification,
+    resendCooldownTime,
     updateFormData,
     addChild,
     updateChild,

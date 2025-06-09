@@ -1,13 +1,14 @@
 "use client"
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { useAuth } from '@/hooks/useAuth'
+import useAuth from '@/hooks/useAuth'
 import { useOrderStore } from '@/store/orderStore'
 import { useOrderManagement } from '@/hooks/useOrderManagement'
 import { Navbar } from '@/components/panel/Navbar'
 import { ChildSelector } from '@/components/mi-pedido/ChildSelector'
 import { DaySelector } from '@/components/mi-pedido/DaySelector'
+import { MenuTypeSelector, MenuType } from '@/components/mi-pedido/MenuTypeSelector'
 import { OrderSummary } from '@/components/mi-pedido/OrderSummary'
 import { PaymentButton } from '@/components/mi-pedido/PaymentButton'
 import { Card, CardContent } from '@/components/ui/card'
@@ -24,18 +25,21 @@ import {
   Utensils,
   CreditCard,
   ExternalLink,
-  Wifi,
   Database,
-  ArrowRight
+  ArrowRight,
+  Coffee
 } from 'lucide-react'
 
 export default function MiPedidoPage() {
   const { user, isLoading: authLoading } = useAuth()
+  const [activeMenuType, setActiveMenuType] = useState<MenuType>('almuerzo')
+  
   const { 
     setUserType, 
     setChildren,
     clearSelectionsByChild,
-    getOrderSummaryByChild
+    getOrderSummaryByChild,
+    selectionsByChild
   } = useOrderStore()
 
   // Usar el hook unificado de gestión de pedidos con múltiples semanas
@@ -70,6 +74,21 @@ export default function MiPedidoPage() {
   }
 
   const summary = getOrderSummaryByChild()
+
+  // Calcular contadores para las pestañas
+  const getMenuTypeCounts = () => {
+    let almuerzoCount = 0
+    let colacionCount = 0
+    
+    selectionsByChild.forEach(selection => {
+      if (selection.almuerzo) almuerzoCount++
+      if (selection.colacion) colacionCount++
+    })
+    
+    return { almuerzoCount, colacionCount }
+  }
+
+  const { almuerzoCount, colacionCount } = getMenuTypeCounts()
 
   if (authLoading || isLoadingMenu || isLoadingOrder) {
     return (
@@ -179,17 +198,16 @@ export default function MiPedidoPage() {
           )}
         </motion.div>
 
-        {/* Información sobre integración con Firebase */}
+        {/* Información sobre integración con GetNet */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
         >
           <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800">
-            <Wifi className="h-4 w-4 text-blue-600" />
+            <CreditCard className="h-4 w-4 text-blue-600" />
             <AlertDescription className="text-blue-800 dark:text-blue-200">
-              <strong>Sistema integrado:</strong> Los menús se obtienen en tiempo real desde Firebase. 
-              Los pagos se procesan de forma segura con GetNet. Todos los datos se sincronizan automáticamente.
+              <strong>Sistema integrado:</strong> Los pagos se procesan de forma segura con GetNet.
             </AlertDescription>
           </Alert>
         </motion.div>
@@ -258,11 +276,49 @@ export default function MiPedidoPage() {
               </motion.div>
             )}
 
-            {/* Mostrar todas las semanas */}
+            {/* Selector de tipo de menú */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
+            >
+              <Card className="border-slate-200 bg-white/50 dark:bg-slate-800/50 dark:border-slate-700">
+                <CardContent className="p-6">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-full bg-slate-100 dark:bg-slate-800">
+                        {activeMenuType === 'almuerzo' ? (
+                          <Utensils className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+                        ) : (
+                          <Coffee className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+                        )}
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+                          Seleccionar Tipo de Menú
+                        </h2>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                          Elige entre almuerzos y colaciones para ver las opciones disponibles
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <MenuTypeSelector
+                      activeType={activeMenuType}
+                      onTypeChange={setActiveMenuType}
+                      almuerzoCount={almuerzoCount}
+                      colacionCount={colacionCount}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Mostrar todas las semanas */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
               className="space-y-12"
             >
               {allWeeks.map((week, weekIndex) => {
@@ -306,6 +362,23 @@ export default function MiPedidoPage() {
                                 Menú Disponible
                               </Badge>
                             )}
+                            <Badge variant="outline" className={
+                              activeMenuType === 'almuerzo' 
+                                ? "bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300"
+                                : "bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"
+                            }>
+                              {activeMenuType === 'almuerzo' ? (
+                                <>
+                                  <Utensils className="w-3 h-3 mr-1" />
+                                  Almuerzos
+                                </>
+                              ) : (
+                                <>
+                                  <Coffee className="w-3 h-3 mr-1" />
+                                  Colaciones
+                                </>
+                              )}
+                            </Badge>
                           </div>
                         </div>
                       </div>
@@ -391,10 +464,14 @@ export default function MiPedidoPage() {
                         <div className="space-y-4">
                           <div className="flex items-center gap-3">
                             <div className="p-2 rounded-full bg-emerald-100 dark:bg-emerald-900/30">
-                              <Utensils className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                              {activeMenuType === 'almuerzo' ? (
+                                <Utensils className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                              ) : (
+                                <Coffee className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                              )}
                             </div>
                             <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
-                              Días Laborales
+                              Días Laborales - {activeMenuType === 'almuerzo' ? 'Almuerzos' : 'Colaciones'}
                             </h3>
                             <Badge variant="outline" className="bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
                               Lunes a Viernes
@@ -409,15 +486,16 @@ export default function MiPedidoPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                               {weekDays.map((dayMenu, index) => (
                                 <motion.div
-                                  key={dayMenu.date}
+                                  key={`${dayMenu.date}-${activeMenuType}`}
                                   initial={{ opacity: 0, y: 20 }}
                                   animate={{ opacity: 1, y: 0 }}
-                                  transition={{ delay: 0.4 + weekIndex * 0.1 + index * 0.05 }}
+                                  transition={{ delay: 0.5 + weekIndex * 0.1 + index * 0.05 }}
                                 >
                                   <DaySelector
                                     dayMenu={dayMenu}
                                     user={user}
                                     isReadOnly={false}
+                                    menuType={activeMenuType}
                                   />
                                 </motion.div>
                               ))}
@@ -433,7 +511,7 @@ export default function MiPedidoPage() {
                                 <Calendar className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                               </div>
                               <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
-                                Fin de Semana
+                                Fin de Semana - {activeMenuType === 'almuerzo' ? 'Almuerzos' : 'Colaciones'}
                               </h3>
                               <Badge variant="outline" className="bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
                                 Sábado y Domingo
@@ -443,15 +521,16 @@ export default function MiPedidoPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                               {weekendDays.filter(day => day.hasItems).map((dayMenu, index) => (
                                 <motion.div
-                                  key={dayMenu.date}
+                                  key={`${dayMenu.date}-${activeMenuType}`}
                                   initial={{ opacity: 0, y: 20 }}
                                   animate={{ opacity: 1, y: 0 }}
-                                  transition={{ delay: 0.6 + weekIndex * 0.1 + index * 0.05 }}
+                                  transition={{ delay: 0.7 + weekIndex * 0.1 + index * 0.05 }}
                                 >
                                   <DaySelector
                                     dayMenu={dayMenu}
                                     user={user}
                                     isReadOnly={false}
+                                    menuType={activeMenuType}
                                   />
                                 </motion.div>
                               ))}
@@ -481,7 +560,7 @@ export default function MiPedidoPage() {
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.5 }}
+            transition={{ delay: 0.6 }}
             className="space-y-6"
           >
             <OrderSummary
@@ -530,66 +609,10 @@ export default function MiPedidoPage() {
                 </CardContent>
               </Card>
             )}
-
-            {/* Información de contacto y soporte */}
-            <Card className="border-slate-200 bg-slate-50/50 dark:bg-slate-800/50 dark:border-slate-700">
-              <CardContent className="p-4">
-                <h4 className="font-medium text-slate-900 dark:text-slate-100 mb-2">
-                  Sistema Integrado
-                </h4>
-                <div className="text-sm text-slate-600 dark:text-slate-400 space-y-1">
-                  <p>• Menús sincronizados desde Firebase</p>
-                  <p>• Pedidos guardados en tiempo real</p>
-                  <p>• Pagos procesados con GetNet</p>
-                  <p>• Confirmaciones automáticas por webhook</p>
-                </div>
-                <div className="flex gap-2 mt-3">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => window.open('/admin', '_blank')}
-                    className="gap-2 flex-1"
-                  >
-                    <ExternalLink className="w-3 h-3" />
-                    Admin
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={refreshMenu}
-                    className="gap-2 flex-1"
-                  >
-                    <RefreshCw className="w-3 h-3" />
-                    Sync
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
           </motion.div>
         </div>
 
         {/* Footer con información adicional */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.7 }}
-          className="text-center pt-8 border-t border-slate-200 dark:border-slate-700"
-        >
-          <div className="flex items-center justify-center gap-6 text-sm text-slate-500 dark:text-slate-400 flex-wrap">
-            <div className="flex items-center gap-1">
-              <Database className="w-4 h-4 text-blue-500" />
-              <span>Firebase Real-time</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <CreditCard className="w-4 h-4 text-green-500" />
-              <span>GetNet Payments</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Wifi className="w-4 h-4 text-purple-500" />
-              <span>Webhooks Automáticos</span>
-            </div>
-          </div>
-        </motion.div>
       </div>
     </div>
   )

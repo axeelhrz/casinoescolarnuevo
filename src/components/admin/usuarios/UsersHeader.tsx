@@ -57,9 +57,11 @@ export function UsersHeader({
                 <div className="flex items-center space-x-2">
                   <span className="font-medium">{userStats.totalUsers} usuarios</span>
                   <span>•</span>
-                  <span>{userStats.estudiantes} apoderados</span>
+                  <span>{userStats.apoderados} apoderados</span>
                   <span>•</span>
                   <span>{userStats.funcionarios} funcionarios</span>
+                  <span>•</span>
+                  <span>{userStats.estudiantes} estudiantes</span>
                   <span>•</span>
                   <span>{userStats.admins} administradores</span>
                 </div>

@@ -172,9 +172,6 @@ export function MenuHeader({
                   </div>
                   <div className="flex items-center space-x-3">
                     <Badge variant="outline" className="text-green-700 border-green-300 bg-green-50 dark:bg-green-900/20">
-                      Panel Usuario
-                    </Badge>
-                    <Badge variant="outline" className="text-green-700 border-green-300 bg-green-50 dark:bg-green-900/20">
                       Menú Público
                     </Badge>
                     <Badge variant="outline" className="text-green-700 border-green-300 bg-green-50 dark:bg-green-900/20">

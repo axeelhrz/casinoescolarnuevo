@@ -3,14 +3,19 @@ import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   User, 
-  Calendar, 
   CreditCard, 
   Clock,
   CheckCircle,
   AlertCircle,
   Mail,
   Package,
-  DollarSign
+  DollarSign,
+  ShoppingBag,
+  Coffee,
+  Printer,
+  Download,
+  ChefHat,
+  Utensils
 } from 'lucide-react'
 import {
   Dialog,
@@ -26,6 +31,8 @@ import { AdminOrderService } from '@/services/adminOrderService'
 import { OrderDetailView } from '@/types/adminOrder'
 import { formatAdminCurrency, formatAdminDate, formatAdminTime } from '@/lib/adminUtils'
 import { Skeleton } from '@/components/ui/skeleton'
+import { format, parseISO } from 'date-fns'
+import { es } from 'date-fns/locale'
 
 interface OrderDetailModalProps {
   orderId: string | null
@@ -44,6 +51,7 @@ export function OrderDetailModal({
   const [isLoading, setIsLoading] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isPrinting, setIsPrinting] = useState(false)
 
   const loadOrderDetail = useCallback(async () => {
     if (!orderId) return
@@ -85,6 +93,16 @@ export function OrderDetailModal({
     }
   }
 
+  const handlePrintOrder = () => {
+    setIsPrinting(true)
+    // Simular impresión
+    setTimeout(() => {
+      setIsPrinting(false)
+      // Aquí implementarías la lógica real de impresión
+      window.print()
+    }, 1000)
+  }
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'paid':
@@ -101,13 +119,13 @@ export function OrderDetailModal({
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'paid':
-        return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+        return 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800'
       case 'pending':
-        return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+        return 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800'
       case 'cancelled':
-        return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+        return 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800'
       default:
-        return 'bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-300'
+        return 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-900/30 dark:text-slate-300 dark:border-slate-800'
     }
   }
 
@@ -126,24 +144,40 @@ export function OrderDetailModal({
 
   const getUserTypeColor = (userType: string) => {
     return userType === 'estudiante' 
-      ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-      : 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
+      ? 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800'
+      : 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800'
   }
 
   const getUserTypeLabel = (userType: string) => {
     return userType === 'estudiante' ? 'Estudiante' : 'Funcionario'
   }
 
+  const getDayOfWeek = (dateString: string) => {
+    try {
+      return format(parseISO(dateString), 'EEEE', { locale: es })
+    } catch {
+      return 'Fecha inválida'
+    }
+  }
+
+  const getFormattedDate = (dateString: string) => {
+    try {
+      return format(parseISO(dateString), 'dd/MM/yyyy', { locale: es })
+    } catch {
+      return dateString
+    }
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <Package className="w-5 h-5 text-blue-600" />
-              <span>Detalle del Pedido</span>
+              <span>Detalle del Pedido para Entrega</span>
               {orderDetail && (
-                <Badge className={getStatusColor(orderDetail.status)}>
+                <Badge className={`border-2 ${getStatusColor(orderDetail.status)}`}>
                   <div className="flex items-center space-x-1">
                     {getStatusIcon(orderDetail.status)}
                     <span>{getStatusLabel(orderDetail.status)}</span>
@@ -151,6 +185,20 @@ export function OrderDetailModal({
                 </Badge>
               )}
             </div>
+            {orderDetail && (
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePrintOrder}
+                  disabled={isPrinting}
+                  className="text-slate-600 hover:text-slate-700"
+                >
+                  <Printer className="w-4 h-4 mr-2" />
+                  {isPrinting ? 'Imprimiendo...' : 'Imprimir'}
+                </Button>
+              </div>
+            )}
           </DialogTitle>
         </DialogHeader>
 
@@ -163,12 +211,12 @@ export function OrderDetailModal({
               exit={{ opacity: 0 }}
               className="space-y-6"
             >
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <Skeleton className="h-48 w-full" />
                 <Skeleton className="h-48 w-full" />
                 <Skeleton className="h-48 w-full" />
               </div>
               <Skeleton className="h-64 w-full" />
-              <Skeleton className="h-32 w-full" />
             </motion.div>
           ) : error ? (
             <motion.div
@@ -196,14 +244,14 @@ export function OrderDetailModal({
               exit={{ opacity: 0 }}
               className="space-y-6"
             >
-              {/* Grid principal con información del cliente y resumen */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Información principal del pedido */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Información del cliente */}
                 <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200 dark:border-blue-800">
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2 text-blue-700 dark:text-blue-300">
                       <User className="w-5 h-5" />
-                      <span>Información del Cliente</span>
+                      <span>Cliente</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -212,10 +260,10 @@ export function OrderDetailModal({
                         {orderDetail.user.firstName.charAt(0)}{orderDetail.user.lastName.charAt(0)}
                       </div>
                       <div className="flex-1">
-                        <h3 className="font-semibold text-slate-900 dark:text-white text-lg">
+                        <h3 className="font-bold text-slate-900 dark:text-white text-lg">
                           {orderDetail.user.firstName} {orderDetail.user.lastName}
                         </h3>
-                        <Badge className={getUserTypeColor(orderDetail.user.userType)}>
+                        <Badge className={`border ${getUserTypeColor(orderDetail.user.userType)}`}>
                           {getUserTypeLabel(orderDetail.user.userType)}
                         </Badge>
                       </div>
@@ -224,9 +272,9 @@ export function OrderDetailModal({
                     <div className="space-y-3">
                       <div className="flex items-center space-x-3">
                         <Mail className="w-4 h-4 text-slate-500" />
-                        <div>
-                          <p className="text-sm text-slate-600 dark:text-slate-400">Email</p>
-                          <p className="font-medium text-slate-900 dark:text-white">
+                        <div className="flex-1">
+                          <p className="text-xs text-slate-600 dark:text-slate-400">Email</p>
+                          <p className="font-medium text-slate-900 dark:text-white text-sm">
                             {orderDetail.user.email}
                           </p>
                         </div>
@@ -234,9 +282,9 @@ export function OrderDetailModal({
                       
                       <div className="flex items-center space-x-3">
                         <Package className="w-4 h-4 text-slate-500" />
-                        <div>
-                          <p className="text-sm text-slate-600 dark:text-slate-400">ID del pedido</p>
-                          <p className="font-mono text-sm text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">
+                        <div className="flex-1">
+                          <p className="text-xs text-slate-600 dark:text-slate-400">ID del pedido</p>
+                          <p className="font-mono text-xs text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">
                             {orderDetail.id}
                           </p>
                         </div>
@@ -249,149 +297,202 @@ export function OrderDetailModal({
                 <Card className="bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 border-emerald-200 dark:border-emerald-800">
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2 text-emerald-700 dark:text-emerald-300">
-                      <DollarSign className="w-5 h-5" />
-                      <span>Resumen del Pedido</span>
+                      <ChefHat className="w-5 h-5" />
+                      <span>Resumen</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-3">
                       <div className="text-center p-3 bg-white dark:bg-slate-800 rounded-lg">
-                        <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                          {orderDetail.itemsCount}
+                        <ShoppingBag className="w-5 h-5 text-blue-600 mx-auto mb-1" />
+                        <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                          {orderDetail.itemsSummary?.totalAlmuerzos || 0}
                         </p>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">
-                          Total de items
+                        <p className="text-xs text-slate-600 dark:text-slate-400">
+                          Almuerzos
                         </p>
                       </div>
                       <div className="text-center p-3 bg-white dark:bg-slate-800 rounded-lg">
-                        <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                          {orderDetail.hasColaciones ? 'Sí' : 'No'}
+                        <Coffee className="w-5 h-5 text-emerald-600 mx-auto mb-1" />
+                        <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
+                          {orderDetail.itemsSummary?.totalColaciones || 0}
                         </p>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">
-                          Incluye colaciones
+                        <p className="text-xs text-slate-600 dark:text-slate-400">
+                          Colaciones
                         </p>
                       </div>
                     </div>
                     
                     <Separator />
                     
-                    <div className="text-center p-4 bg-white dark:bg-slate-800 rounded-lg">
-                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Total a pagar</p>
-                      <p className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">
+                    <div className="text-center p-3 bg-white dark:bg-slate-800 rounded-lg">
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Total</p>
+                      <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
                         {formatAdminCurrency(orderDetail.total)}
                       </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {orderDetail.itemsCount} items total
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Estado del pago */}
+                <Card className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800/50 dark:to-slate-700/50 border-slate-200 dark:border-slate-700">
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2 text-slate-700 dark:text-slate-300">
+                      <CreditCard className="w-5 h-5" />
+                      <span>Estado del Pago</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="text-center">
+                      <div className="flex items-center justify-center mb-3">
+                        <div className={`p-3 rounded-full ${
+                          orderDetail.status === 'paid' ? 'bg-emerald-100 dark:bg-emerald-900/30' :
+                          orderDetail.status === 'pending' ? 'bg-amber-100 dark:bg-amber-900/30' :
+                          'bg-red-100 dark:bg-red-900/30'
+                        }`}>
+                          {getStatusIcon(orderDetail.status)}
+                        </div>
+                      </div>
+                      <Badge className={`border-2 ${getStatusColor(orderDetail.status)} text-sm px-3 py-1`}>
+                        {getStatusLabel(orderDetail.status)}
+                      </Badge>
+                    </div>
+                    
+                    <div className="space-y-2 text-center">
+                      <div>
+                        <p className="text-xs text-slate-600 dark:text-slate-400">Creado</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white">
+                          {formatAdminDate(orderDetail.createdAt)}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {formatAdminTime(orderDetail.createdAt)}
+                        </p>
+                      </div>
+                      
+                      {orderDetail.paidAt && (
+                        <div className="pt-2 border-t">
+                          <p className="text-xs text-emerald-600 dark:text-emerald-400">Pagado</p>
+                          <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
+                            {formatAdminDate(orderDetail.paidAt)}
+                          </p>
+                          <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                            {formatAdminTime(orderDetail.paidAt)}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
               </div>
 
-              {/* Detalles del pedido por día */}
-              <Card>
+              {/* Lista de preparación por día */}
+              <Card className="border-2 border-orange-200 dark:border-orange-800 bg-orange-50/50 dark:bg-orange-900/10">
                 <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Calendar className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-                    <span>Detalles del Pedido por Día</span>
+                  <CardTitle className="flex items-center space-x-2 text-orange-700 dark:text-orange-300">
+                    <Utensils className="w-5 h-5" />
+                    <span>Lista de Preparación por Día</span>
                   </CardTitle>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
-                    Selecciones de almuerzo y colación para cada día de la semana
+                  <p className="text-sm text-orange-600 dark:text-orange-400">
+                    Detalles específicos para la preparación y entrega de cada día
                   </p>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {orderDetail.selections.map((selection, index) => (
                       <motion.div
                         key={selection.date}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3, delay: index * 0.1 }}
-                        className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 hover:shadow-md transition-shadow"
+                        className="bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-lg p-4 hover:shadow-lg transition-all"
                       >
-                        <div className="flex items-center justify-between mb-4">
+                        {/* Encabezado del día */}
+                        <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-200 dark:border-slate-700">
                           <div>
-                            <h4 className="font-semibold text-slate-900 dark:text-white capitalize text-lg">
-                              {selection.dayName}
+                            <h4 className="font-bold text-slate-900 dark:text-white capitalize text-lg">
+                              {getDayOfWeek(selection.date)}
                             </h4>
                             <p className="text-sm text-slate-600 dark:text-slate-400">
-                              {formatAdminDate(selection.date)}
+                              {getFormattedDate(selection.date)}
                             </p>
                           </div>
-                          <Badge variant="outline" className="text-xs">
+                          <Badge variant="outline" className="text-xs font-mono">
                             Día {index + 1}
                           </Badge>
                         </div>
                         
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Items del día */}
+                        <div className="space-y-3">
                           {/* Almuerzo */}
                           {selection.almuerzo ? (
-                            <div className="space-y-2">
-                              <div className="flex items-center space-x-2">
-                                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                                <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                                  Almuerzo
-                                </p>
+                            <div className="bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                              <div className="flex items-center space-x-2 mb-2">
+                                <ShoppingBag className="w-4 h-4 text-blue-600" />
+                                <span className="text-sm font-semibold text-blue-700 dark:text-blue-300">
+                                  ALMUERZO
+                                </span>
                               </div>
-                              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-                                <div className="flex items-center justify-between mb-2">
-                                  <p className="font-semibold text-blue-900 dark:text-blue-100">
+                              <div className="space-y-1">
+                                <div className="flex items-center justify-between">
+                                  <p className="font-bold text-blue-900 dark:text-blue-100 text-lg">
                                     {selection.almuerzo.code}
                                   </p>
-                                  <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                                  <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 font-mono">
                                     {formatAdminCurrency(selection.almuerzo.price)}
                                   </Badge>
                                 </div>
-                                <p className="text-sm text-blue-700 dark:text-blue-300">
+                                <p className="text-sm text-blue-700 dark:text-blue-300 font-medium">
                                   {selection.almuerzo.name}
                                 </p>
+                                {selection.almuerzo.description && (
+                                  <p className="text-xs text-blue-600 dark:text-blue-400">
+                                    {selection.almuerzo.description}
+                                  </p>
+                                )}
                               </div>
                             </div>
                           ) : (
-                            <div className="space-y-2">
-                              <div className="flex items-center space-x-2">
-                                <div className="w-3 h-3 bg-slate-300 rounded-full"></div>
-                                <p className="text-sm font-medium text-slate-500">
-                                  Almuerzo
-                                </p>
-                              </div>
-                              <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-center">
-                                <p className="text-sm text-slate-500">Sin selección</p>
-                              </div>
+                            <div className="bg-slate-50 dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-3 text-center">
+                              <ShoppingBag className="w-4 h-4 text-slate-400 mx-auto mb-1" />
+                              <p className="text-sm text-slate-500">Sin almuerzo</p>
                             </div>
                           )}
                           
                           {/* Colación */}
                           {selection.colacion ? (
-                            <div className="space-y-2">
-                              <div className="flex items-center space-x-2">
-                                <div className="w-3 h-3 bg-emerald-500 rounded-full"></div>
-                                <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                                  Colación
-                                </p>
+                            <div className="bg-emerald-50 dark:bg-emerald-900/20 border-2 border-emerald-200 dark:border-emerald-800 rounded-lg p-3">
+                              <div className="flex items-center space-x-2 mb-2">
+                                <Coffee className="w-4 h-4 text-emerald-600" />
+                                <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+                                  COLACIÓN
+                                </span>
                               </div>
-                              <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg p-3">
-                                <div className="flex items-center justify-between mb-2">
-                                  <p className="font-semibold text-emerald-900 dark:text-emerald-100">
+                              <div className="space-y-1">
+                                <div className="flex items-center justify-between">
+                                  <p className="font-bold text-emerald-900 dark:text-emerald-100 text-lg">
                                     {selection.colacion.code}
                                   </p>
-                                  <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                                  <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 font-mono">
                                     {formatAdminCurrency(selection.colacion.price)}
                                   </Badge>
                                 </div>
-                                <p className="text-sm text-emerald-700 dark:text-emerald-300">
+                                <p className="text-sm text-emerald-700 dark:text-emerald-300 font-medium">
                                   {selection.colacion.name}
                                 </p>
+                                {selection.colacion.description && (
+                                  <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                                    {selection.colacion.description}
+                                  </p>
+                                )}
                               </div>
                             </div>
                           ) : (
-                            <div className="space-y-2">
-                              <div className="flex items-center space-x-2">
-                                <div className="w-3 h-3 bg-slate-300 rounded-full"></div>
-                                <p className="text-sm font-medium text-slate-500">
-                                  Colación
-                                </p>
-                              </div>
-                              <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-center">
-                                <p className="text-sm text-slate-500">Sin colación</p>
-                              </div>
+                            <div className="bg-slate-50 dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-3 text-center">
+                              <Coffee className="w-4 h-4 text-slate-400 mx-auto mb-1" />
+                              <p className="text-sm text-slate-500">Sin colación</p>
                             </div>
                           )}
                         </div>
@@ -401,109 +502,45 @@ export function OrderDetailModal({
                 </CardContent>
               </Card>
 
-              {/* Información de pago */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <CreditCard className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-                    <span>Información de Pago</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
-                    {/* Estado actual */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="text-center p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                        <div className="flex items-center justify-center mb-2">
-                          {getStatusIcon(orderDetail.status)}
-                        </div>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Estado actual</p>
-                        <Badge className={getStatusColor(orderDetail.status)}>
-                          {getStatusLabel(orderDetail.status)}
-                        </Badge>
-                      </div>
-                      
-                      <div className="text-center p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                        <Clock className="w-5 h-5 text-slate-500 mx-auto mb-2" />
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Fecha de creación</p>
-                        <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                          {formatAdminDate(orderDetail.createdAt)}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {formatAdminTime(orderDetail.createdAt)}
+              {/* Resumen financiero detallado */}
+              {orderDetail.financialSummary && (
+                <Card className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800/50 dark:to-slate-700/50 border-slate-200 dark:border-slate-700">
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2 text-slate-700 dark:text-slate-300">
+                      <DollarSign className="w-5 h-5" />
+                      <span>Resumen Financiero</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="text-center p-3 bg-white dark:bg-slate-800 rounded-lg border">
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Almuerzos</p>
+                        <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                          {formatAdminCurrency(orderDetail.financialSummary.subtotalAlmuerzos)}
                         </p>
                       </div>
-                      
-                      {orderDetail.paidAt ? (
-                        <div className="text-center p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
-                          <CheckCircle className="w-5 h-5 text-emerald-600 mx-auto mb-2" />
-                          <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Fecha de pago</p>
-                          <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
-                            {formatAdminDate(orderDetail.paidAt)}
-                          </p>
-                          <p className="text-xs text-emerald-600 dark:text-emerald-400">
-                            {formatAdminTime(orderDetail.paidAt)}
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="text-center p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
-                          <Clock className="w-5 h-5 text-amber-600 mx-auto mb-2" />
-                          <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Estado</p>
-                          <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">
-                            Pendiente de pago
-                          </p>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* ID de pago si existe */}
-                    {orderDetail.paymentId && (
-                      <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">ID de transacción</p>
-                        <p className="font-mono text-sm text-slate-900 dark:text-white bg-white dark:bg-slate-700 px-3 py-2 rounded border">
-                          {orderDetail.paymentId}
+                      <div className="text-center p-3 bg-white dark:bg-slate-800 rounded-lg border">
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Colaciones</p>
+                        <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
+                          {formatAdminCurrency(orderDetail.financialSummary.subtotalColaciones)}
                         </p>
                       </div>
-                    )}
-
-                    {/* Historial de estados */}
-                    <div className="space-y-3">
-                      <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                        Historial de Estados
-                      </h4>
-                      <div className="space-y-2">
-                        {orderDetail.paymentHistory.map((payment, index) => (
-                          <div key={index} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                            <div className="flex items-center space-x-3">
-                              {getStatusIcon(payment.status)}
-                              <div>
-                                <p className="text-sm font-medium text-slate-900 dark:text-white">
-                                  {payment.status === 'created' ? 'Pedido creado' : 
-                                   payment.status === 'paid' ? 'Pago confirmado' : 
-                                   payment.status === 'cancelled' ? 'Pedido cancelado' : payment.status}
-                                </p>
-                                <p className="text-xs text-slate-600 dark:text-slate-400">
-                                  {formatAdminDate(payment.date)} a las {formatAdminTime(payment.date)}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                                {formatAdminCurrency(payment.amount)}
-                              </p>
-                              {payment.method && (
-                                <p className="text-xs text-slate-600 dark:text-slate-400 capitalize">
-                                  {payment.method}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        ))}
+                      <div className="text-center p-3 bg-white dark:bg-slate-800 rounded-lg border">
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Items</p>
+                        <p className="text-lg font-bold text-slate-700 dark:text-slate-300">
+                          {orderDetail.financialSummary.totalItems}
+                        </p>
+                      </div>
+                      <div className="text-center p-3 bg-white dark:bg-slate-800 rounded-lg border">
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Promedio</p>
+                        <p className="text-lg font-bold text-slate-700 dark:text-slate-300">
+                          {formatAdminCurrency(orderDetail.financialSummary.averageItemPrice)}
+                        </p>
                       </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Acciones administrativas */}
               <Card className="border-slate-200 dark:border-slate-700">
@@ -551,6 +588,16 @@ export function OrderDetailModal({
                         Cancelar Pedido
                       </Button>
                     )}
+
+                    <Button
+                      variant="outline"
+                      onClick={handlePrintOrder}
+                      disabled={isPrinting}
+                      className="border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      {isPrinting ? 'Generando...' : 'Exportar PDF'}
+                    </Button>
                   </div>
                   
                   {isUpdating && (

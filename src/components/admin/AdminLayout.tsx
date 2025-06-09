@@ -19,12 +19,12 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
         <div className="flex">
           {/* Sidebar skeleton */}
-          <div className="hidden lg:block w-70 h-screen bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700">
-            <div className="p-6">
-              <Skeleton className="h-10 w-full mb-4" />
-              <div className="space-y-3">
+          <div className="hidden lg:block w-64 h-screen bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700">
+            <div className="p-4">
+              <Skeleton className="h-8 w-full mb-3" />
+              <div className="space-y-2">
                 {[...Array(5)].map((_, i) => (
-                  <Skeleton key={i} className="h-12 w-full" />
+                  <Skeleton key={i} className="h-10 w-full" />
                 ))}
               </div>
             </div>
@@ -32,20 +32,20 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           
           {/* Main content skeleton */}
           <div className="flex-1">
-            <div className="p-8">
-              <div className="space-y-6">
-                <Skeleton className="h-20 w-full" />
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="p-6">
+              <div className="space-y-4">
+                <Skeleton className="h-16 w-full" />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   {[...Array(4)].map((_, i) => (
-                    <Skeleton key={i} className="h-32" />
+                    <Skeleton key={i} className="h-24" />
                   ))}
                 </div>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                   <div className="lg:col-span-2">
-                    <Skeleton className="h-96" />
+                    <Skeleton className="h-80" />
                   </div>
                   <div>
-                    <Skeleton className="h-96" />
+                    <Skeleton className="h-80" />
                   </div>
                 </div>
               </div>
@@ -82,8 +82,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         {/* Navigation Sidebar */}
         <AdminNavigation />
         
-        {/* Main Content - Sin margen izquierdo en desktop, pegado al sidebar */}
-        <div className="flex-1 lg:ml-70">
+        {/* Main Content - Margen correcto para el sidebar */}
+        <div className="flex-1 lg:ml-64">
           <motion.main
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

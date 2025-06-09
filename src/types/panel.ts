@@ -17,6 +17,7 @@ export interface MenuItem {
   codigo?: string // Compatibilidad con diferentes formatos
   precio?: number // Compatibilidad con diferentes formatos
   descripcion?: string // Compatibilidad con diferentes formatos
+  customPrice?: boolean // Indica si tiene precio personalizado
 }
 
 export interface DayMenu {
@@ -39,6 +40,9 @@ export interface Child {
   curso: string
   rut?: string
   active: boolean
+  age?: number
+  edad?: number
+  level?: 'Pre School' | 'Lower School' | 'Middle School' | 'High School'
 }
 
 export interface User {
@@ -58,6 +62,7 @@ export interface User {
   hijos?: Child[] // Compatibilidad con diferentes formatos
   active: boolean
   createdAt: Date
+  phone?: string
 }
 
 export interface OrderSelectionByChild {
@@ -123,8 +128,24 @@ export interface Order {
 
 export type UserType = 'apoderado' | 'funcionario'
 
-// Precios actualizados según especificaciones
+// Precios base - se usan cuando no hay precio personalizado
 export const PRICES: Record<UserType, { almuerzo: number; colacion: number }> = {
   apoderado: { almuerzo: 5500, colacion: 5500 },
   funcionario: { almuerzo: 4875, colacion: 4875 }
+}
+
+// Función helper para obtener el precio de un item
+export function getItemPrice(item: MenuItem, userType: UserType): number {
+  // Si el item tiene precio personalizado, usarlo
+  if (item.price !== undefined && item.price > 0) {
+    return item.price
+  }
+  
+  // Si tiene precio en el campo precio (compatibilidad)
+  if (item.precio !== undefined && item.precio > 0) {
+    return item.precio
+  }
+  
+  // Usar precio base según tipo de usuario
+  return PRICES[userType][item.type]
 }

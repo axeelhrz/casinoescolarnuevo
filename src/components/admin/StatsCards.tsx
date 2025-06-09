@@ -25,7 +25,9 @@ export function StatsCards({ stats }: StatsCardsProps) {
       subtitle: `${stats.paidOrders} pagados, ${stats.pendingOrders} pendientes`,
       icon: ShoppingCart,
       gradient: 'from-blue-500 to-blue-600',
-      change: null // Aquí podrías calcular el cambio vs semana anterior
+      bgGradient: 'from-blue-50 to-blue-100',
+      darkBgGradient: 'from-blue-900/20 to-blue-800/20',
+      change: null
     },
     {
       title: 'Recaudación Semanal',
@@ -33,6 +35,8 @@ export function StatsCards({ stats }: StatsCardsProps) {
       subtitle: `Promedio: ${formatAdminCurrency(stats.averageOrderValue)} por pedido`,
       icon: DollarSign,
       gradient: 'from-emerald-500 to-emerald-600',
+      bgGradient: 'from-emerald-50 to-emerald-100',
+      darkBgGradient: 'from-emerald-900/20 to-emerald-800/20',
       change: null
     },
     {
@@ -41,6 +45,8 @@ export function StatsCards({ stats }: StatsCardsProps) {
       subtitle: `${stats.totalStudentsWithOrder} estudiantes, ${stats.totalStaffWithOrder} funcionarios`,
       icon: Users,
       gradient: 'from-purple-500 to-purple-600',
+      bgGradient: 'from-purple-50 to-purple-100',
+      darkBgGradient: 'from-purple-900/20 to-purple-800/20',
       change: null
     },
     {
@@ -49,6 +55,8 @@ export function StatsCards({ stats }: StatsCardsProps) {
       subtitle: 'Requieren confirmación de pago',
       icon: Clock,
       gradient: 'from-amber-500 to-amber-600',
+      bgGradient: 'from-amber-50 to-amber-100',
+      darkBgGradient: 'from-amber-900/20 to-amber-800/20',
       change: null
     }
   ]
@@ -61,10 +69,15 @@ export function StatsCards({ stats }: StatsCardsProps) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: index * 0.1 }}
+          whileHover={{ y: -4, scale: 1.02 }}
+          className="group"
         >
-          <Card className="relative overflow-hidden hover:shadow-lg transition-all duration-300 border-0 bg-white dark:bg-slate-800">
-            {/* Gradiente de fondo */}
-            <div className={`absolute inset-0 bg-gradient-to-br ${stat.gradient} opacity-5`} />
+          <Card className="relative overflow-hidden hover:shadow-xl transition-all duration-300 border-0 bg-white dark:bg-slate-800 h-full">
+            {/* Gradiente de fondo sutil */}
+            <div className={`absolute inset-0 bg-gradient-to-br ${stat.bgGradient} dark:${stat.darkBgGradient} opacity-30 group-hover:opacity-50 transition-opacity duration-300`} />
+            
+            {/* Línea decorativa superior */}
+            <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-br ${stat.gradient} dark:${stat.darkBgGradient} opacity-30 group-hover:opacity-50 transition-opacity duration-300`} />
             
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
               <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">

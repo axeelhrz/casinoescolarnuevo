@@ -399,7 +399,7 @@ export class MenuIntegrationService {
 
       // Publicar menús si no están publicados
       if (!adminMenu.isPublished) {
-        const result = await AdminMenuService.toggleWeekMenuPublication(weekStart, true)
+        const result = await AdminMenuService.toggleWeekPublication(weekStart, true)
         if (!result.success) {
           errors.push(`Error al publicar menús: ${result.message}`)
         } else {

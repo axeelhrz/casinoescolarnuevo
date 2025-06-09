@@ -76,8 +76,8 @@ export function useWeeklyMenuData({
             almuerzos: day.almuerzos.map(item => ({
               id: item.id || '',
               code: item.code,
-              name: item.description,
-              description: item.description,
+              name: item.description ?? '',
+              description: item.description ?? '',
               type: item.type,
               price: user.tipoUsuario === 'funcionario' ? 4875 : 5500,
               available: item.active,
@@ -88,8 +88,8 @@ export function useWeeklyMenuData({
             colaciones: day.colaciones.map(item => ({
               id: item.id || '',
               code: item.code,
-              name: item.description,
-              description: item.description,
+              name: item.description ?? '',
+              description: item.description ?? '',
               type: item.type,
               price: user.tipoUsuario === 'funcionario' ? 4875 : 5500,
               available: item.active,

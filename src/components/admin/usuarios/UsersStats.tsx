@@ -7,7 +7,7 @@ import {
   Mail, 
   MailX,
   TrendingUp,
-  Calendar
+  Heart
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -61,12 +61,12 @@ export function UsersStats({ stats, isLoading }: UsersStatsProps) {
       description: 'Usuarios registrados'
     },
     {
-      title: 'Estudiantes',
-      value: stats.estudiantes || 0,
-      icon: UserCheck,
+      title: 'Apoderados',
+      value: stats.apoderados || 0,
+      icon: Heart,
       color: 'text-emerald-600',
       bgColor: 'bg-emerald-100 dark:bg-emerald-900/30',
-      description: 'Usuarios estudiantes'
+      description: 'Padres y apoderados'
     },
     {
       title: 'Funcionarios',
@@ -75,6 +75,14 @@ export function UsersStats({ stats, isLoading }: UsersStatsProps) {
       color: 'text-purple-600',
       bgColor: 'bg-purple-100 dark:bg-purple-900/30',
       description: 'Personal del colegio'
+    },
+    {
+      title: 'Estudiantes',
+      value: stats.estudiantes || 0,
+      icon: UserCheck,
+      color: 'text-cyan-600',
+      bgColor: 'bg-cyan-100 dark:bg-cyan-900/30',
+      description: 'Estudiantes directos'
     },
     {
       title: 'Administradores',
@@ -107,14 +115,6 @@ export function UsersStats({ stats, isLoading }: UsersStatsProps) {
       color: 'text-indigo-600',
       bgColor: 'bg-indigo-100 dark:bg-indigo-900/30',
       description: 'Últimos 7 días'
-    },
-    {
-      title: 'Nuevos (Mes)',
-      value: stats.newUsersThisMonth || 0,
-      icon: Calendar,
-      color: 'text-cyan-600',
-      bgColor: 'bg-cyan-100 dark:bg-cyan-900/30',
-      description: 'Últimos 30 días'
     }
   ]
 

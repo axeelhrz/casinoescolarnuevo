@@ -81,7 +81,7 @@ export function GreetingCard({ user }: GreetingCardProps) {
                           {child.name}
                         </span>
                         <span className="text-slate-500 dark:text-slate-500 text-clean">
-                          {child.class} - {child.level === 'basico' ? 'Básica' : 'Media'}
+                          {child.class} - {child.level === 'Pre School' || child.level === 'Lower School' ? 'Básica' : 'Media'}
                         </span>
                       </div>
                     ))}

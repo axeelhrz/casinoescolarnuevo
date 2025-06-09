@@ -5,18 +5,16 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useRouter, usePathname } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import Link from 'next/link'
+import Image from 'next/image'
 import { 
   User, 
   LogOut, 
-  Bell, 
   Sun, 
   Moon, 
   Menu, 
   X, 
   ChevronDown,
   ShoppingCart,
-  Settings,
-  HelpCircle,
   BookOpen,
   UserCircle,
   LayoutDashboard
@@ -87,7 +85,6 @@ export function Navbar({ onLogout }: NavbarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
-  const [notifications] = useState(3) // Simulado
 
   // Verificar si el componente está montado (para evitar hydration issues)
   useEffect(() => {
@@ -182,11 +179,6 @@ export function Navbar({ onLogout }: NavbarProps) {
     return pathname === href
   }
 
-  // Obtener el título de la página actual
-  const getCurrentPageTitle = () => {
-    const currentItem = navigationItems.find(item => isActiveRoute(item.href))
-    return currentItem ? currentItem.name : 'Casino Escolar'
-  }
 
   if (!mounted || isLoading) {
     return (
@@ -211,22 +203,24 @@ export function Navbar({ onLogout }: NavbarProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           
-          {/* Logo y título */}
+          {/* Logo */}
           <motion.div
-            whileHover={{ scale: 1.02 }}
-            className="flex items-center space-x-3 cursor-pointer"
+            whileHover={{ scale: 1.05 }}
+            className="flex items-center cursor-pointer"
           >
-            <Link href="/panel" className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-emerald-500 rounded-xl flex items-center justify-center shadow-lg">
-                <span className="text-white font-bold text-lg text-clean">CE</span>
-              </div>
-              <div className="hidden sm:block">
-                <h1 className="text-xl font-semibold text-slate-800 dark:text-slate-100 text-elegant">
-                  Casino Escolar
-                </h1>
-                <p className="text-xs text-slate-500 dark:text-slate-400 text-clean">
-                  {getCurrentPageTitle()}
-                </p>
+            <Link href="/panel" className="flex items-center">
+              <div className="relative w-20 h-12 sm:w-24 sm:h-14 flex-shrink-0 p-1">
+                <Image
+                  src="/logo-colores.png"
+                  alt="Casino Escolar"
+                  fill
+                  className={`object-contain transition-all duration-300 ${
+                    theme === 'dark' 
+                      ? 'brightness-125 contrast-125 saturate-110' 
+                      : 'invert brightness-90 contrast-110 saturate-105'
+                  }`}
+                  priority
+                />
               </div>
             </Link>
           </motion.div>
@@ -280,21 +274,6 @@ export function Navbar({ onLogout }: NavbarProps) {
               aria-label="Cambiar tema"
             >
               {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-            </motion.button>
-
-            {/* Notificaciones */}
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all duration-200 relative"
-              aria-label="Notificaciones"
-            >
-              <Bell size={18} />
-              {notifications > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center animate-pulse">
-                  {notifications > 9 ? '9+' : notifications}
-                </span>
-              )}
             </motion.button>
 
             {/* Menú de usuario */}
@@ -353,14 +332,6 @@ export function Navbar({ onLogout }: NavbarProps) {
                           Ver Perfil
                         </button>
                       </Link>
-                      <button className="w-full flex items-center px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors duration-200">
-                        <Settings size={16} className="mr-3" />
-                        Configuración
-                      </button>
-                      <button className="w-full flex items-center px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors duration-200">
-                        <HelpCircle size={16} className="mr-3" />
-                        Ayuda
-                      </button>
                       <div className="border-t border-slate-200 dark:border-slate-700 mt-1 pt-1">
                         <button 
                           onClick={handleLogout}
@@ -379,21 +350,6 @@ export function Navbar({ onLogout }: NavbarProps) {
 
           {/* Controles móviles */}
           <div className="md:hidden flex items-center space-x-2">
-            {/* Notificaciones móvil */}
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 relative"
-              aria-label="Notificaciones"
-            >
-              <Bell size={18} />
-              {notifications > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                  {notifications > 9 ? '9' : notifications}
-                </span>
-              )}
-            </motion.button>
-
             {/* Toggle tema móvil */}
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -435,10 +391,17 @@ export function Navbar({ onLogout }: NavbarProps) {
               {/* Información del usuario móvil */}
               <div className="px-4 py-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg mb-4">
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-emerald-500 rounded-lg flex items-center justify-center">
-                    <span className="text-white font-medium text-sm text-clean">
-                      {user.firstName.charAt(0)}{user.lastName.charAt(0)}
-                    </span>
+                  <div className="relative w-12 h-12 flex-shrink-0 p-1">
+                    <Image
+                      src="/logo-colores.png"
+                      alt="Casino Escolar"
+                      fill
+                      className={`object-contain rounded-lg transition-all duration-300 ${
+                        theme === 'dark' 
+                          ? 'brightness-125 contrast-125 saturate-110' 
+                          : 'invert brightness-90 contrast-110 saturate-105'
+                      }`}
+                    />
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-medium text-slate-800 dark:text-slate-100 text-clean">
@@ -483,22 +446,6 @@ export function Navbar({ onLogout }: NavbarProps) {
                 })}
                 
                 <div className="border-t border-slate-200 dark:border-slate-700 pt-2 mt-2">
-                  <button className="w-full flex items-center px-4 py-3 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors duration-200">
-                    <Settings size={18} className="mr-3" />
-                    <div>
-                      <div className="font-medium">Configuración</div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400">Ajustes de cuenta</div>
-                    </div>
-                  </button>
-                  
-                  <button className="w-full flex items-center px-4 py-3 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors duration-200">
-                    <HelpCircle size={18} className="mr-3" />
-                    <div>
-                      <div className="font-medium">Ayuda</div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400">Soporte y contacto</div>
-                    </div>
-                  </button>
-                  
                   <button 
                     onClick={handleLogout}
                     className="w-full flex items-center px-4 py-3 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors duration-200"

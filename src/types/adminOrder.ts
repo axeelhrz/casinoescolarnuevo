@@ -15,6 +15,26 @@ export interface AdminOrderView extends OrderState {
   paidAt?: Date
   cancelledAt?: Date
   daysSincePending?: number
+  itemsSummary: {
+    totalAlmuerzos: number
+    totalColaciones: number
+    almuerzosPrice: number
+    colacionesPrice: number
+    itemsDetail: Array<{
+      date: string
+      dayName: string
+      almuerzo?: {
+        code: string
+        name: string
+        price: number
+      }
+      colacion?: {
+        code: string
+        name: string
+        price: number
+      }
+    }>
+  }
 }
 
 export interface OrderFilters {
@@ -34,7 +54,7 @@ export interface OrderMetrics {
   pendingOrders: number
   paidOrders: number
   cancelledOrders: number
-  criticalPendingOrders: number // Pedidos pendientes por más de 3 días
+  criticalPendingOrders: number
   totalByStatus: {
     pending: number
     paid: number
@@ -44,6 +64,23 @@ export interface OrderMetrics {
     pending: number
     paid: number
     cancelled: number
+  }
+  itemsMetrics: {
+    totalAlmuerzos: number
+    totalColaciones: number
+    averageItemsPerOrder: number
+    mostPopularItems: Array<{
+      code: string
+      name: string
+      type: 'almuerzo' | 'colacion'
+      count: number
+      revenue: number
+    }>
+  }
+  weeklyTrends: {
+    ordersGrowth: number
+    revenueGrowth: number
+    conversionRate: number
   }
 }
 
@@ -81,11 +118,13 @@ export interface OrderDetailView extends Omit<AdminOrderView, 'selections'> {
       code: string
       name: string
       price: number
+      description?: string
     }
     colacion?: {
       code: string
       name: string
       price: number
+      description?: string
     }
   }>
   paymentHistory: Array<{
@@ -94,4 +133,12 @@ export interface OrderDetailView extends Omit<AdminOrderView, 'selections'> {
     amount: number
     method?: string
   }>
+  financialSummary: {
+    subtotalAlmuerzos: number
+    subtotalColaciones: number
+    totalItems: number
+    averageItemPrice: number
+    discounts?: number
+    taxes?: number
+  }
 }

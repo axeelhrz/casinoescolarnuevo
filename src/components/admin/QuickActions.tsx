@@ -6,8 +6,6 @@ import {
   ClipboardList, 
   Users, 
   BarChart3,
-  Settings,
-  FileText,
   ArrowRight
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -55,24 +53,6 @@ export function QuickActions({ pendingOrdersCount }: QuickActionsProps) {
       color: 'text-amber-600 dark:text-amber-400',
       bgColor: 'bg-amber-50 dark:bg-amber-900/20',
       borderColor: 'border-amber-200 dark:border-amber-800'
-    },
-    {
-      title: 'Configuración',
-      description: 'Ajustes del sistema',
-      href: '/admin/configuracion',
-      icon: Settings,
-      color: 'text-slate-600 dark:text-slate-400',
-      bgColor: 'bg-slate-50 dark:bg-slate-900/20',
-      borderColor: 'border-slate-200 dark:border-slate-800'
-    },
-    {
-      title: 'Exportar Datos',
-      description: 'Descargar reportes en Excel/PDF',
-      href: '/admin/exportar',
-      icon: FileText,
-      color: 'text-indigo-600 dark:text-indigo-400',
-      bgColor: 'bg-indigo-50 dark:bg-indigo-900/20',
-      borderColor: 'border-indigo-200 dark:border-indigo-800'
     }
   ]
 

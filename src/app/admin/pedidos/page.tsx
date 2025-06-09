@@ -6,10 +6,13 @@ import { OrdersFilters } from '@/components/admin/pedidos/OrdersFilters'
 import { OrdersMetrics } from '@/components/admin/pedidos/OrdersMetrics'
 import { OrdersTable } from '@/components/admin/pedidos/OrdersTable'
 import { OrderDetailModal } from '@/components/admin/pedidos/OrderDetailModal'
+import { DailyMenuSummary } from '@/components/admin/pedidos/DailyMenuSummary'
+import { GeneratePDFButton } from '@/components/admin/pedidos/GeneratePDFButton'
 import { useAdminAuth } from '@/hooks/useAdminAuth'
 import { useAdminOrders } from '@/hooks/useAdminOrders'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { AlertTriangle, RefreshCw, Download, FileText, Calendar, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { AlertTriangle, RefreshCw, FileText, Calendar, Clock, CheckCircle, XCircle, AlertCircle, ChefHat, BarChart3 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -34,7 +37,7 @@ export default function AdminPedidosPage() {
 
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
-  const [isExporting, setIsExporting] = useState(false)
+  const [activeTab, setActiveTab] = useState('overview')
 
   // Actualizar datos cada 30 segundos
   useEffect(() => {
@@ -93,29 +96,6 @@ export default function AdminPedidosPage() {
         description: "No se pudo eliminar el pedido.",
         variant: "destructive",
       })
-    }
-  }
-
-  const handleExportData = async (format: 'excel' | 'pdf') => {
-    setIsExporting(true)
-    try {
-      // Aquí implementarías la lógica de exportación
-      // Por ahora simularemos el proceso
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
-      toast({
-        title: "Exportación completada",
-        description: `Los datos han sido exportados en formato ${format.toUpperCase()}.`,
-      })
-    } catch (error) {
-      console.error('Error exporting data:', error)
-      toast({
-        title: "Error en exportación",
-        description: "No se pudo completar la exportación.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsExporting(false)
     }
   }
 
@@ -226,14 +206,17 @@ export default function AdminPedidosPage() {
                     Actualizar
                   </Button>
                   
-                  <Button
-                    onClick={() => handleExportData('excel')}
-                    disabled={isExporting || orders.length === 0}
-                    className="flex items-center gap-2"
-                  >
-                    <Download className="w-4 h-4" />
-                    {isExporting ? 'Exportando...' : 'Exportar'}
-                  </Button>
+                  <GeneratePDFButton
+                    orders={orders}
+                    metrics={metrics}
+                    weekStart={filters.weekStart || ''}
+                    adminUser={adminUser}
+                    filters={{
+                      status: filters.status,
+                      userType: filters.userType,
+                      searchTerm: filters.searchTerm
+                    }}
+                  />
                 </div>
               </div>
 
@@ -392,81 +375,142 @@ export default function AdminPedidosPage() {
               </motion.div>
             )}
 
-            {/* Métricas */}
+            {/* Tabs principales */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
             >
-              <OrdersMetrics 
-                metrics={metrics} 
-                isLoading={isLoading} 
-              />
-            </motion.div>
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+                <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:grid-cols-3">
+                  <TabsTrigger value="overview" className="flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4" />
+                    <span className="hidden sm:inline">Vista General</span>
+                    <span className="sm:hidden">General</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="kitchen" className="flex items-center gap-2">
+                    <ChefHat className="w-4 h-4" />
+                    <span className="hidden sm:inline">Resúmenes Cocina</span>
+                    <span className="sm:hidden">Cocina</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="orders" className="flex items-center gap-2">
+                    <FileText className="w-4 h-4" />
+                    <span className="hidden sm:inline">Lista de Pedidos</span>
+                    <span className="sm:hidden">Pedidos</span>
+                  </TabsTrigger>
+                </TabsList>
 
-            {/* Filtros */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              <OrdersFilters
-                filters={filters}
-                onFiltersChange={updateFilters}
-                totalResults={orders.length}
-              />
-            </motion.div>
+                {/* Vista General */}
+                <TabsContent value="overview" className="space-y-6">
+                  {/* Métricas */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                  >
+                    <OrdersMetrics 
+                      metrics={metrics} 
+                      isLoading={isLoading} 
+                    />
+                  </motion.div>
 
-            {/* Tabla de pedidos */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-            >
-              <OrdersTable
-                orders={orders}
-                isLoading={isLoading}
-                onViewDetail={handleViewDetail}
-                onUpdateStatus={handleStatusUpdate}
-                onDeleteOrder={handleDeleteOrder}
-              />
-            </motion.div>
+                  {/* Filtros */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                  >
+                    <OrdersFilters
+                      filters={filters}
+                      onFiltersChange={updateFilters}
+                      totalResults={orders.length}
+                    />
+                  </motion.div>
+                </TabsContent>
 
-            {/* Estado vacío */}
-            {!isLoading && !error && orders.length === 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className="max-w-2xl mx-auto"
-              >
-                <Card className="shadow-soft-lg border-0 bg-white dark:bg-slate-800">
-                  <CardContent className="p-12 text-center">
-                    <div className="w-20 h-20 bg-gradient-to-br from-slate-100 to-slate-50 dark:from-slate-700 dark:to-slate-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-soft">
-                      <FileText className="w-10 h-10 text-slate-400 dark:text-slate-500" />
-                    </div>
-                    <h3 className="text-xl font-semibold text-slate-800 dark:text-slate-100 mb-3 text-elegant">
-                      No hay pedidos
-                    </h3>
-                    <p className="text-slate-600 dark:text-slate-400 text-clean mb-6">
-                      No se encontraron pedidos con los filtros aplicados. 
-                      Intenta ajustar los criterios de búsqueda.
-                    </p>
-                    <Button
-                      onClick={() => updateFilters({ 
-                        userType: 'all', 
-                        status: 'all', 
-                        searchTerm: '',
-                        day: undefined 
-                      })}
-                      variant="outline"
+                {/* Resúmenes para Cocina */}
+                <TabsContent value="kitchen" className="space-y-6">
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                  >
+                    <DailyMenuSummary
+                      orders={orders}
+                      weekStart={filters.weekStart || ''}
+                      adminUser={adminUser}
+                    />
+                  </motion.div>
+                </TabsContent>
+
+                {/* Lista de Pedidos */}
+                <TabsContent value="orders" className="space-y-6">
+                  {/* Filtros */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                  >
+                    <OrdersFilters
+                      filters={filters}
+                      onFiltersChange={updateFilters}
+                      totalResults={orders.length}
+                    />
+                  </motion.div>
+
+                  {/* Tabla de pedidos */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                  >
+                    <OrdersTable
+                      orders={orders}
+                      isLoading={isLoading}
+                      onViewDetail={handleViewDetail}
+                      onUpdateStatus={handleStatusUpdate}
+                      onDeleteOrder={handleDeleteOrder}
+                    />
+                  </motion.div>
+
+                  {/* Estado vacío */}
+                  {!isLoading && !error && orders.length === 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.3 }}
+                      className="max-w-2xl mx-auto"
                     >
-                      Limpiar filtros
-                    </Button>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            )}
+                      <Card className="shadow-soft-lg border-0 bg-white dark:bg-slate-800">
+                        <CardContent className="p-12 text-center">
+                          <div className="w-20 h-20 bg-gradient-to-br from-slate-100 to-slate-50 dark:from-slate-700 dark:to-slate-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-soft">
+                            <FileText className="w-10 h-10 text-slate-400 dark:text-slate-500" />
+                          </div>
+                          <h3 className="text-xl font-semibold text-slate-800 dark:text-slate-100 mb-3 text-elegant">
+                            No hay pedidos
+                          </h3>
+                          <p className="text-slate-600 dark:text-slate-400 text-clean mb-6">
+                            No se encontraron pedidos con los filtros aplicados. 
+                            Intenta ajustar los criterios de búsqueda.
+                          </p>
+                          <Button
+                            onClick={() => updateFilters({ 
+                              userType: 'all', 
+                              status: 'all', 
+                              searchTerm: '',
+                              day: undefined 
+                            })}
+                            variant="outline"
+                          >
+                            Limpiar filtros
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  )}
+                </TabsContent>
+              </Tabs>
+            </motion.div>
 
             {/* Modal de detalle */}
             <OrderDetailModal

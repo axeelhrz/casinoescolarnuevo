@@ -3,12 +3,26 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { SchoolLevelSelector } from "@/components/ui/school-level-selector"
+import { CourseSelector } from "@/components/ui/course-selector"
 import { motion } from "framer-motion"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth"
 import { doc, setDoc } from "firebase/firestore"
 import { auth, db } from "@/app/lib/firebase"
+import { SchoolLevel } from "@/lib/courseUtils"
+import { GraduationCap, Plus, Trash2 } from "lucide-react"
+
+interface ChildData {
+  id: number
+  name: string
+  age: string
+  class: string
+  level: SchoolLevel
+  rut: string
+}
 
 export default function RegistroPage() {
   const router = useRouter()
@@ -20,20 +34,20 @@ export default function RegistroPage() {
     lastName: "",
     email: "",
     password: "",
-    confirmPassword: ""
+    confirmPassword: "",
+    userType: "" as "funcionario" | "apoderado" | ""
   })
   
-  const [children, setChildren] = useState([
+  const [children, setChildren] = useState<ChildData[]>([
     {
       id: 1,
       name: "",
       age: "",
       class: "",
-      level: "basico"
+      level: "Lower School",
+      rut: ""
     }
   ])
-  
-  const [showChildrenSection, setShowChildrenSection] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -52,7 +66,16 @@ export default function RegistroPage() {
     if (error) setError("")
   }
 
-  const handleChildChange = (id: number, field: string, value: string) => {
+  const handleUserTypeChange = (value: string) => {
+    setFormData({
+      ...formData,
+      userType: value as "funcionario" | "apoderado"
+    })
+    // Limpiar error cuando el usuario seleccione un tipo
+    if (error) setError("")
+  }
+
+  const handleChildChange = (id: number, field: keyof ChildData, value: string | SchoolLevel) => {
     setChildren(children.map(child => 
       child.id === id ? { ...child, [field]: value } : child
     ))
@@ -65,7 +88,8 @@ export default function RegistroPage() {
       name: "",
       age: "",
       class: "",
-      level: "basico"
+      level: "Lower School",
+      rut: ""
     }])
   }
 
@@ -105,21 +129,47 @@ export default function RegistroPage() {
       return false
     }
 
-    // Validar datos de hijos si la sección está visible
-    if (showChildrenSection) {
+    // Validar que se haya seleccionado un tipo de usuario
+    if (!formData.userType) {
+      setError("Debes seleccionar un tipo de usuario")
+      return false
+    }
+
+    // Validar datos de hijos si es apoderado
+    if (formData.userType === "apoderado") {
       const validChildren = children.filter(child => child.name.trim() !== "")
+      if (validChildren.length === 0) {
+        setError("Los apoderados deben agregar al menos un hijo")
+        return false
+      }
+      
       for (const child of validChildren) {
         if (!child.name.trim()) {
-          setError("El nombre del niño es requerido")
+          setError("El nombre del hijo es requerido")
           return false
         }
         if (!child.age || parseInt(child.age) < 3 || parseInt(child.age) > 18) {
-          setError("La edad del niño debe estar entre 3 y 18 años")
+          setError("La edad del hijo debe estar entre 3 y 18 años")
           return false
         }
         if (!child.class.trim()) {
-          setError("La clase del niño es requerida")
+          setError("El curso del hijo es requerido")
           return false
+        }
+        if (!child.level) {
+          setError("El nivel educativo del hijo es requerido")
+          return false
+        }
+        // Eliminamos la validación restrictiva del formato del curso
+        // Ahora solo validamos que no esté vacío
+        
+        // Validar RUT si se proporciona
+        if (child.rut && child.rut.trim()) {
+          const rutRegex = /^[0-9]+-[0-9kK]$/
+          if (!rutRegex.test(child.rut.trim())) {
+            setError("El formato del RUT debe ser: 12345678-9")
+            return false
+          }
         }
       }
     }
@@ -151,33 +201,42 @@ export default function RegistroPage() {
         displayName: `${formData.firstName.trim()} ${formData.lastName.trim()}`
       })
 
-      // Preparar datos de los hijos (solo los que tienen nombre)
-      const validChildren = showChildrenSection 
+      // Preparar datos de los hijos (solo para apoderados) - CORREGIDO para evitar undefined
+      const validChildren = formData.userType === "apoderado" 
         ? children.filter(child => child.name.trim() !== "").map(child => ({
             id: child.id.toString(),
             name: child.name.trim(),
             age: parseInt(child.age) || 0,
-            class: child.class.trim(),
-            level: child.level as 'basico' | 'medio'
+            edad: parseInt(child.age) || 0,
+            curso: child.class.trim(),
+            level: child.level,
+            rut: child.rut.trim() || null, // Usar null en lugar de undefined
+            active: true
           }))
         : []
 
-      // Determinar el tipo de usuario: si tiene hijos es funcionario/padre, si no es estudiante
-      const userType = validChildren.length > 0 ? 'funcionario' : 'estudiante'
-
-      // Guardar datos adicionales en Firestore
+      // Guardar datos adicionales en Firestore - CORREGIDO para evitar undefined
       const userData = {
         id: user.uid,
         email: formData.email.trim().toLowerCase(),
         firstName: formData.firstName.trim(),
         lastName: formData.lastName.trim(),
-        userType,
+        userType: formData.userType,
+        tipoUsuario: formData.userType, // Mantener compatibilidad
         children: validChildren,
+        isActive: true,
+        active: true,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
+        phone: null // Usar null en lugar de undefined
       }
 
-      await setDoc(doc(db, 'users', user.uid), userData)
+      // Filtrar cualquier valor undefined antes de guardar
+      const cleanUserData = Object.fromEntries(
+        Object.entries(userData).filter(([, value]) => value !== undefined)
+      )
+
+      await setDoc(doc(db, 'users', user.uid), cleanUserData)
 
       // Registro exitoso, redirigir al panel
       router.push('/panel')
@@ -215,12 +274,12 @@ export default function RegistroPage() {
   }
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
       {/* Subtle Background Elements */}
       <div className="absolute inset-0">
         {/* Soft geometric shapes */}
         <motion.div
-          className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-br from-emerald-100/30 to-teal-100/30 rounded-full blur-3xl"
+          className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-br from-emerald-100/30 to-teal-100/30 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-full blur-3xl"
           animate={{
             scale: [1, 1.1, 1],
             opacity: [0.2, 0.4, 0.2],
@@ -233,7 +292,7 @@ export default function RegistroPage() {
         />
         
         <motion.div
-          className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-br from-blue-100/30 to-indigo-100/30 rounded-full blur-3xl"
+          className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-br from-blue-100/30 to-indigo-100/30 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-full blur-3xl"
           animate={{
             scale: [1, 1.2, 1],
             opacity: [0.15, 0.35, 0.15],
@@ -247,7 +306,7 @@ export default function RegistroPage() {
         />
 
         {/* Subtle pattern overlay */}
-        <div className="absolute inset-0 opacity-5">
+        <div className="absolute inset-0 opacity-5 dark:opacity-10">
           <div 
             className="w-full h-full"
             style={{
@@ -258,7 +317,7 @@ export default function RegistroPage() {
       </div>
 
       {/* Main Content */}
-      <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4 py-8">
+      <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4 py-4">
         
         {/* Auth Form Container */}
         <motion.div
@@ -267,32 +326,32 @@ export default function RegistroPage() {
           transition={{ duration: 0.8, ease: "easeOut" }}
           className="w-full max-w-lg"
         >
-          <div className="auth-form-container rounded-2xl p-8">
+          <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl rounded-2xl p-6 shadow-2xl border border-white/20 dark:border-slate-700/50">
             
-            {/* Header */}
+            {/* Header - Más compacto */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
-              className="text-center mb-8"
+              className="text-center mb-6"
             >
-              <h1 className="text-3xl font-light text-slate-800 mb-2 text-elegant">
+              <h1 className="text-2xl font-light text-slate-800 dark:text-slate-100 mb-1 text-elegant">
                 Únete a nosotros
               </h1>
-              <p className="text-slate-600 text-clean">
-                Crea tu cuenta en Casino Escolar
+              <p className="text-slate-600 dark:text-slate-300 text-clean text-sm">
+                Crea tu cuenta en Delicias Food Service
               </p>
               
               {/* Elegant separator */}
               <motion.div
-                className="flex items-center justify-center mt-4"
+                className="flex items-center justify-center mt-3"
                 initial={{ opacity: 0, scale: 0 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.6, delay: 0.4 }}
               >
-                <div className="w-8 h-px bg-slate-300" />
-                <div className="mx-4 w-2 h-2 bg-emerald-400 rounded-full" />
-                <div className="w-8 h-px bg-slate-300" />
+                <div className="w-6 h-px bg-slate-300 dark:bg-slate-600" />
+                <div className="mx-3 w-1.5 h-1.5 bg-emerald-400 dark:bg-emerald-500 rounded-full" />
+                <div className="w-6 h-px bg-slate-300 dark:bg-slate-600" />
               </motion.div>
             </motion.div>
 
@@ -301,9 +360,9 @@ export default function RegistroPage() {
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mb-6 p-3 bg-red-50 border border-red-200 rounded-lg"
+                className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
               >
-                <p className="text-sm text-red-600 text-clean">{error}</p>
+                <p className="text-sm text-red-600 dark:text-red-400 text-clean">{error}</p>
               </motion.div>
             )}
 
@@ -313,16 +372,16 @@ export default function RegistroPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.6, delay: 0.4 }}
-              className="space-y-5"
+              className="space-y-4"
             >
               {/* Name Fields */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <motion.div
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.6, delay: 0.6 }}
                 >
-                  <label className="label-educational">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                     Nombre *
                   </label>
                   <Input
@@ -333,6 +392,7 @@ export default function RegistroPage() {
                     placeholder="Tu nombre"
                     required
                     disabled={isLoading}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-300"
                   />
                 </motion.div>
 
@@ -341,7 +401,7 @@ export default function RegistroPage() {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.6, delay: 0.7 }}
                 >
-                  <label className="label-educational">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                     Apellido *
                   </label>
                   <Input
@@ -352,6 +412,7 @@ export default function RegistroPage() {
                     placeholder="Tu apellido"
                     required
                     disabled={isLoading}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-300"
                   />
                 </motion.div>
               </div>
@@ -362,7 +423,7 @@ export default function RegistroPage() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.6, delay: 0.8 }}
               >
-                <label className="label-educational">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                   Correo Electrónico *
                 </label>
                 <Input
@@ -373,96 +434,133 @@ export default function RegistroPage() {
                   placeholder="tu@email.com"
                   required
                   disabled={isLoading}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-300"
                 />
               </motion.div>
 
-              {/* Password Fields */}
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.6, delay: 0.9 }}
-              >
-                <label className="label-educational">
-                  Contraseña *
-                </label>
-                <Input
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  placeholder="Mínimo 6 caracteres"
-                  required
-                  disabled={isLoading}
-                  minLength={6}
-                />
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.6, delay: 1 }}
-              >
-                <label className="label-educational">
-                  Confirmar Contraseña *
-                </label>
-                <Input
-                  type="password"
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleInputChange}
-                  placeholder="Repite tu contraseña"
-                  required
-                  disabled={isLoading}
-                  minLength={6}
-                />
-              </motion.div>
-
-              {/* Children Section Toggle */}
+              {/* User Type Selection - Más compacto */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 1.1 }}
-                className="pt-4"
+                transition={{ duration: 0.6, delay: 0.85 }}
+                className="space-y-2"
               >
-                <div className="flex items-center justify-between p-4 bg-slate-50/50 rounded-xl border border-slate-200">
-                  <div>
-                    <h3 className="text-sm font-medium text-slate-700 text-clean">
-                      ¿Tienes hijos en el colegio?
-                    </h3>
-                    <p className="text-xs text-slate-500 text-clean mt-1">
-                      Opcional: Agrega a tus hijos para gestionar sus menús
-                    </p>
-                  </div>
-                  <motion.button
-                    type="button"
-                    onClick={() => setShowChildrenSection(!showChildrenSection)}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    disabled={isLoading}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
-                      showChildrenSection 
-                        ? 'bg-emerald-600 text-white' 
-                        : 'bg-white text-slate-600 border border-slate-200 hover:border-emerald-300'
-                    } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Tipo de Usuario *
+                </label>
+                <RadioGroup
+                  value={formData.userType}
+                  onValueChange={handleUserTypeChange}
+                  disabled={isLoading}
+                  className="space-y-2"
+                >
+                  <motion.div
+                    whileHover={!isLoading ? { scale: 1.01 } : {}}
+                    className={`flex items-start space-x-3 p-3 rounded-lg border-2 transition-all duration-300 ${
+                      formData.userType === "apoderado" 
+                        ? "border-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/20" 
+                        : "border-slate-200 dark:border-slate-600 bg-white/60 dark:bg-slate-700/60 hover:border-emerald-300 dark:hover:border-emerald-600"
+                    } ${isLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                   >
-                    {showChildrenSection ? 'Ocultar' : 'Agregar'}
-                  </motion.button>
-                </div>
+                    <RadioGroupItem value="apoderado" id="apoderado" className="mt-0.5" />
+                    <div className="flex-1">
+                      <label 
+                        htmlFor="apoderado" 
+                        className={`text-sm font-medium text-slate-800 dark:text-slate-200 cursor-pointer ${isLoading ? 'cursor-not-allowed' : ''}`}
+                      >
+                        Apoderado
+                      </label>
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                        Padre, madre o tutor. Gestiona menús de tus hijos.
+                      </p>
+                    </div>
+                  </motion.div>
+
+                  <motion.div
+                    whileHover={!isLoading ? { scale: 1.01 } : {}}
+                    className={`flex items-start space-x-3 p-3 rounded-lg border-2 transition-all duration-300 ${
+                      formData.userType === "funcionario" 
+                        ? "border-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/20" 
+                        : "border-slate-200 dark:border-slate-600 bg-white/60 dark:bg-slate-700/60 hover:border-emerald-300 dark:hover:border-emerald-600"
+                    } ${isLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                  >
+                    <RadioGroupItem value="funcionario" id="funcionario" className="mt-0.5" />
+                    <div className="flex-1">
+                      <label 
+                        htmlFor="funcionario" 
+                        className={`text-sm font-medium text-slate-800 dark:text-slate-200 cursor-pointer ${isLoading ? 'cursor-not-allowed' : ''}`}
+                      >
+                        Funcionario
+                      </label>
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                        Trabajador del colegio. Gestiona tu propio menú.
+                      </p>
+                    </div>
+                  </motion.div>
+                </RadioGroup>
               </motion.div>
 
-              {/* Children Section */}
-              {showChildrenSection && (
+              {/* Password Fields */}
+              <div className="grid grid-cols-2 gap-3">
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.6, delay: 0.9 }}
+                >
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Contraseña *
+                  </label>
+                  <Input
+                    type="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    placeholder="Mín. 6 caracteres"
+                    required
+                    disabled={isLoading}
+                    minLength={6}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-300"
+                  />
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.6, delay: 1 }}
+                >
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Confirmar *
+                  </label>
+                  <Input
+                    type="password"
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleInputChange}
+                    placeholder="Repite contraseña"
+                    required
+                    disabled={isLoading}
+                    minLength={6}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-300"
+                  />
+                </motion.div>
+              </div>
+
+              {/* Children Section - Solo para apoderados - Actualizado con nuevos niveles */}
+              {formData.userType === "apoderado" && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
                   transition={{ duration: 0.5 }}
-                  className="space-y-4"
+                  className="space-y-3"
                 >
-                  <div className="border-t border-slate-200 pt-4">
-                    <h3 className="text-lg font-medium text-slate-800 mb-4 text-clean">
-                      Información de tus hijos
-                    </h3>
+                  <div className="border-t border-slate-200 dark:border-slate-600 pt-3">
+                    <div className="flex items-center space-x-2 mb-3">
+                      <GraduationCap className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                      <h3 className="text-base font-medium text-slate-800 dark:text-slate-200 text-clean">
+                        Información de tus hijos *
+                      </h3>
+                    </div>
                     
                     {children.map((child, index) => (
                       <motion.div
@@ -470,10 +568,10 @@ export default function RegistroPage() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.4, delay: index * 0.1 }}
-                        className="p-4 bg-white/60 rounded-xl border border-slate-200 mb-4"
+                        className="p-4 bg-white/60 dark:bg-slate-700/60 rounded-lg border border-slate-200 dark:border-slate-600 mb-3"
                       >
                         <div className="flex items-center justify-between mb-3">
-                          <h4 className="text-sm font-medium text-slate-700 text-clean">
+                          <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 text-clean">
                             Hijo {index + 1}
                           </h4>
                           {children.length > 1 && (
@@ -481,31 +579,33 @@ export default function RegistroPage() {
                               type="button"
                               onClick={() => removeChild(child.id)}
                               disabled={isLoading}
-                              className="text-red-500 hover:text-red-700 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 p-1 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                              Eliminar
+                              <Trash2 className="w-4 h-4" />
                             </button>
                           )}
                         </div>
                         
                         <div className="space-y-3">
                           <div>
-                            <label className="label-educational">
-                              Nombre del niño/a
+                            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
+                              Nombre completo *
                             </label>
                             <Input
                               type="text"
                               value={child.name}
                               onChange={(e) => handleChildChange(child.id, 'name', e.target.value)}
-                              placeholder="Nombre completo"
+                              placeholder="Nombre completo del hijo/a"
                               disabled={isLoading}
+                              required
+                              className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-300"
                             />
                           </div>
                           
                           <div className="grid grid-cols-2 gap-3">
                             <div>
-                              <label className="label-educational">
-                                Edad
+                              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
+                                Edad *
                               </label>
                               <Input
                                 type="number"
@@ -515,36 +615,53 @@ export default function RegistroPage() {
                                 min="3"
                                 max="18"
                                 disabled={isLoading}
+                                required
+                                className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-300"
                               />
                             </div>
                             
                             <div>
-                              <label className="label-educational">
-                                Clase
+                              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
+                                RUT (opcional)
                               </label>
                               <Input
                                 type="text"
-                                value={child.class}
-                                onChange={(e) => handleChildChange(child.id, 'class', e.target.value)}
-                                placeholder="Ej: 3°A, 1°B"
+                                value={child.rut}
+                                onChange={(e) => handleChildChange(child.id, 'rut', e.target.value)}
+                                placeholder="12345678-9"
                                 disabled={isLoading}
+                                className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-300"
                               />
                             </div>
                           </div>
+
+                          <div>
+                            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
+                              Nivel educativo *
+                            </label>
+                            <SchoolLevelSelector
+                              value={child.level}
+                              onValueChange={(value) => handleChildChange(child.id, 'level', value)}
+                              placeholder="Selecciona un nivel"
+                              disabled={isLoading}
+                            />
+                          </div>
                           
                           <div>
-                            <label className="label-educational">
-                              Nivel Educativo
+                            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
+                              Curso *
                             </label>
-                            <select
-                              value={child.level}
-                              onChange={(e) => handleChildChange(child.id, 'level', e.target.value)}
-                              className="select-educational"
+                            <CourseSelector
+                              level={child.level}
+                              value={child.class}
+                              onValueChange={(value) => handleChildChange(child.id, 'class', value)}
+                              placeholder="Selecciona un curso o escribe uno personalizado"
+                              allowCustom={true}
                               disabled={isLoading}
-                            >
-                              <option value="basico">Educación Básica</option>
-                              <option value="medio">Educación Media</option>
-                            </select>
+                            />
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                              Puedes escribir cualquier curso personalizado
+                            </p>
                           </div>
                         </div>
                       </motion.div>
@@ -556,9 +673,10 @@ export default function RegistroPage() {
                       whileHover={!isLoading ? { y: -1 } : {}}
                       whileTap={!isLoading ? { scale: 0.98 } : {}}
                       disabled={isLoading}
-                      className="w-full p-3 border-2 border-dashed border-slate-300 rounded-xl text-slate-600 hover:border-emerald-400 hover:text-emerald-600 transition-all duration-300 text-sm font-medium text-clean disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full p-3 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg text-slate-600 dark:text-slate-400 hover:border-emerald-400 dark:hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all duration-300 text-sm font-medium text-clean disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
                     >
-                      + Agregar otro hijo
+                      <Plus className="w-4 h-4" />
+                      <span>Agregar otro hijo</span>
                     </motion.button>
                   </div>
                 </motion.div>
@@ -569,7 +687,7 @@ export default function RegistroPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 1.2 }}
-                className="pt-4"
+                className="pt-3"
               >
                 <motion.div
                   whileHover={!isLoading ? { y: -2 } : {}}
@@ -578,10 +696,10 @@ export default function RegistroPage() {
                   <Button
                     type="submit"
                     disabled={isLoading}
-                    className="btn-auth-primary group relative overflow-hidden"
+                    className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-semibold py-2.5 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 group relative overflow-hidden"
                   >
                     {isLoading ? (
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center justify-center space-x-2">
                         <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                         <span>Creando cuenta...</span>
                       </div>
@@ -609,11 +727,11 @@ export default function RegistroPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.6, delay: 1.3 }}
-              className="flex items-center my-6"
+              className="flex items-center my-4"
             >
-              <div className="flex-1 h-px bg-slate-200"></div>
-              <span className="px-4 text-sm text-slate-500 text-clean">o</span>
-              <div className="flex-1 h-px bg-slate-200"></div>
+              <div className="flex-1 h-px bg-slate-200 dark:bg-slate-600"></div>
+              <span className="px-3 text-sm text-slate-500 dark:text-slate-400 text-clean">o</span>
+              <div className="flex-1 h-px bg-slate-200 dark:bg-slate-600"></div>
             </motion.div>
 
             {/* Login Link */}
@@ -623,11 +741,11 @@ export default function RegistroPage() {
               transition={{ duration: 0.6, delay: 1.4 }}
               className="text-center"
             >
-              <p className="text-sm text-slate-600 text-clean">
+              <p className="text-sm text-slate-600 dark:text-slate-300 text-clean">
                 ¿Ya tienes una cuenta?{" "}
                 <Link 
                   href="/auth/login" 
-                  className="text-emerald-600 hover:text-emerald-700 transition-colors duration-300 font-medium"
+                  className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors duration-300 font-medium"
                 >
                   Iniciar sesión
                 </Link>
@@ -641,20 +759,20 @@ export default function RegistroPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.6, delay: 1.5 }}
-          className="mt-6"
+          className="mt-8"
         >
           <Link href="/">
             <motion.button
               whileHover={{ y: -1, scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="btn-back-home"
+              className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors duration-300 font-medium"
             >
               ← Volver al inicio
             </motion.button>
           </Link>
         </motion.div>
 
-        {/* Bottom accent */}
+        {/* Bottom accent - Más separado */}
         <motion.div
           className="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-center"
           initial={{ opacity: 0 }}
@@ -662,13 +780,13 @@ export default function RegistroPage() {
           transition={{ duration: 0.8, delay: 1.7 }}
         >
           <motion.div
-            className="flex items-center space-x-2 text-slate-400 text-sm"
+            className="flex items-center space-x-2 text-slate-400 dark:text-slate-500 text-sm"
             animate={{ y: [0, -4, 0] }}
             transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
           >
-            <div className="w-1 h-1 bg-slate-400 rounded-full" />
-            <span className="text-clean">Sistema de gestión educativa</span>
-            <div className="w-1 h-1 bg-slate-400 rounded-full" />
+            <div className="w-1 h-1 bg-slate-400 dark:bg-slate-500 rounded-full" />
+            <span className="text-clean">Sistema de gestión alimentaria</span>
+            <div className="w-1 h-1 bg-slate-400 dark:bg-slate-500 rounded-full" />
           </motion.div>
         </motion.div>
       </div>

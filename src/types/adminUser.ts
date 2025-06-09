@@ -3,8 +3,8 @@ export interface AdminUserView {
   firstName: string
   lastName: string
   email: string
-  role: 'funcionario' | 'estudiante' | 'admin' | 'super_admin'
-  userType: 'funcionario' | 'estudiante'
+  role: 'funcionario' | 'estudiante' | 'admin' | 'super_admin' | 'apoderado'
+  userType: 'funcionario' | 'estudiante' | 'apoderado'
   emailVerified: boolean
   createdAt: Date
   lastLogin?: Date
@@ -20,11 +20,11 @@ export interface AdminUserChild {
   name: string
   age: number
   class: string
-  level: 'basico' | 'medio'
+  level: 'Pre School' | 'Lower School' | 'Middle School' | 'High School'
 }
 
 export interface UserFilters {
-  role?: 'funcionario' | 'estudiante' | 'admin' | 'all'
+  role?: 'funcionario' | 'estudiante' | 'admin' | 'apoderado' | 'all'
   emailVerified?: boolean | 'all'
   dateRange?: 'week' | 'month' | 'custom'
   customStartDate?: string
@@ -36,6 +36,7 @@ export interface UserFilters {
 export interface UserStats {
   totalUsers: number
   funcionarios: number
+  apoderados: number
   estudiantes: number
   admins: number
   verifiedEmails: number
@@ -66,7 +67,7 @@ export interface UserUpdateRequest {
   lastName?: string
   email?: string
   phone?: string
-  role?: 'funcionario' | 'estudiante' | 'admin' | 'super_admin'
+  role?: 'funcionario' | 'estudiante' | 'admin' | 'super_admin' | 'apoderado'
   isActive?: boolean
 }
 

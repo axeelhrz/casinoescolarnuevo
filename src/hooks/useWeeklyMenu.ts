@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { MenuService } from '@/services/menuService'
 import { DayMenuDisplay, MenuLoadingState, MenuError } from '@/types/menu'
-import { useAuth } from '@/hooks/useAuth'
+import useAuth from '@/hooks/useAuth'
 
 interface UseWeeklyMenuReturn {
   weekMenu: DayMenuDisplay[]

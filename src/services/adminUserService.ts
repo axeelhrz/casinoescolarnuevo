@@ -40,6 +40,7 @@ export class AdminUserService {
       let activeUsers = 0
       let verifiedEmails = 0
       let funcionarios = 0
+      let apoderados = 0
       let estudiantes = 0
       let admins = 0
       let newUsersThisWeek = 0
@@ -64,24 +65,26 @@ export class AdminUserService {
           verifiedEmails++
         }
         
-        // Contar por tipo de usuario
-        const userType = userData.role || userData.userType || 'estudiante'
-        switch (userType) {
-          case 'funcionario':
-          case 'apoderado':
-            funcionarios++
-            break
-          case 'admin':
-          case 'super_admin':
-            admins++
-            break
-          default:
-            estudiantes++
-            break
+        // Lógica mejorada para clasificar usuarios
+        const role = userData.role || userData.userType || 'estudiante'
+        const userType = userData.userType || 'estudiante'
+        
+        // Detectar apoderados: usuarios que tienen hijos o userType/role = 'apoderado'
+        const hasChildren = Array.isArray(userData.children) && userData.children.length > 0
+        const isApoderado = role === 'apoderado' || userType === 'apoderado' || hasChildren
+        
+        if (role === 'admin' || role === 'super_admin') {
+          admins++
+        } else if (role === 'funcionario' || userType === 'funcionario') {
+          funcionarios++
+        } else if (isApoderado) {
+          apoderados++
+        } else {
+          estudiantes++
         }
 
         // Contar usuarios nuevos
-        const createdAt = userData.createdAt?.toDate() || new Date(0)
+        const createdAt = this.convertToDate(userData.createdAt)
         if (createdAt >= oneWeekAgo) {
           newUsersThisWeek++
         }
@@ -93,22 +96,10 @@ export class AdminUserService {
       // Calcular emails no verificados
       const unverifiedEmails = totalUsers - verifiedEmails
 
-      // Obtener estadísticas de pedidos
-      const ordersRef = collection(db, this.ORDERS_COLLECTION)
-      const ordersSnapshot = await getDocs(ordersRef)
-
-      // Calcular usuarios con pedidos
-      const usersWithOrders = new Set()
-      ordersSnapshot.forEach((doc) => {
-        const orderData = doc.data()
-        if (orderData.userId) {
-          usersWithOrders.add(orderData.userId)
-        }
-      })
-
       return {
         totalUsers,
         funcionarios,
+        apoderados,
         estudiantes,
         admins,
         verifiedEmails,
@@ -141,7 +132,10 @@ export class AdminUserService {
       // Aplicar filtros
       if (filters.role && filters.role !== 'all') {
         if (filters.role === 'funcionario') {
-          q = query(q, where('userType', 'in', ['funcionario', 'apoderado']))
+          q = query(q, where('userType', '==', 'funcionario'))
+        } else if (filters.role === 'apoderado') {
+          // Para apoderados, buscar por userType o por tener hijos
+          q = query(q, where('userType', 'in', ['apoderado', 'estudiante']))
         } else {
           q = query(q, where('role', '==', filters.role))
         }
@@ -172,7 +166,19 @@ export class AdminUserService {
       snapshot.docs.forEach((doc, index) => {
         if (index < pageSize) {
           const data = doc.data()
-          users.push(this.mapFirestoreToUser(doc.id, data))
+          const user = this.mapFirestoreToUser(doc.id, data)
+          
+          // Filtrar apoderados si es necesario
+          if (filters.role === 'apoderado') {
+            const hasChildren = Array.isArray(data.children) && data.children.length > 0
+            const isApoderado = data.role === 'apoderado' || data.userType === 'apoderado' || hasChildren
+            if (isApoderado) {
+              users.push(user)
+            }
+          } else {
+            users.push(user)
+          }
+          
           newLastDoc = doc
         } else {
           hasMore = true
@@ -329,22 +335,24 @@ export class AdminUserService {
 
   // Métodos privados auxiliares
   private static mapFirestoreToUser(id: string, data: Record<string, unknown>): AdminUserView {
+    // Detectar si es apoderado
+    const hasChildren = Array.isArray(data.children) && data.children.length > 0
+    const role = data.role || data.userType || 'estudiante'
+    const userType = data.userType || 'estudiante'
+    const isApoderado = role === 'apoderado' || userType === 'apoderado' || hasChildren
+
     return {
       id,
       firstName: typeof data.firstName === 'string' ? data.firstName : '',
       lastName: typeof data.lastName === 'string' ? data.lastName : '',
       email: typeof data.email === 'string' ? data.email : '',
-      role: (typeof data.role === 'string' ? data.role : typeof data.userType === 'string' ? data.userType : 'estudiante') as 'estudiante' | 'funcionario' | 'admin' | 'super_admin',
-      userType: (typeof data.userType === 'string' && ['estudiante', 'funcionario'].includes(data.userType)) 
-        ? data.userType as 'estudiante' | 'funcionario' 
+      role: isApoderado ? 'apoderado' : (typeof data.role === 'string' ? data.role : typeof data.userType === 'string' ? data.userType : 'estudiante') as 'estudiante' | 'funcionario' | 'admin' | 'super_admin' | 'apoderado',
+      userType: isApoderado ? 'apoderado' : (typeof data.userType === 'string' && ['estudiante', 'funcionario', 'apoderado'].includes(data.userType)) 
+        ? data.userType as 'estudiante' | 'funcionario' | 'apoderado'
         : 'estudiante',
       emailVerified: typeof data.emailVerified === 'boolean' ? data.emailVerified : false,
-      createdAt: (data.createdAt && typeof data.createdAt === 'object' && 'toDate' in data.createdAt) 
-        ? (data.createdAt as Timestamp).toDate() 
-        : new Date(),
-      lastLogin: (data.lastLogin && typeof data.lastLogin === 'object' && 'toDate' in data.lastLogin) 
-        ? (data.lastLogin as Timestamp).toDate() 
-        : undefined,
+      createdAt: this.convertToDate(data.createdAt),
+      lastLogin: this.convertToDate(data.lastLogin),
       phone: typeof data.phone === 'string' ? data.phone : undefined,
       isActive: data.isActive !== false,
       children: Array.isArray(data.children) ? data.children : [],
@@ -378,7 +386,7 @@ export class AdminUserService {
       
       if (!snapshot.empty) {
         const lastOrder = snapshot.docs[0].data()
-        return lastOrder.createdAt?.toDate()
+        return this.convertToDate(lastOrder.createdAt)
       }
       
       return undefined
@@ -406,7 +414,7 @@ export class AdminUserService {
           weekStart: data.weekStart || '',
           total: data.total || 0,
           status: data.status || 'pending',
-          createdAt: data.createdAt?.toDate() || new Date(),
+          createdAt: this.convertToDate(data.createdAt),
           itemsCount: data.items?.length || 0
         }
       })
@@ -414,5 +422,36 @@ export class AdminUserService {
       console.error('Error getting user recent orders:', error)
       return []
     }
+  }
+
+  // Utility method to safely convert various date formats to Date object
+  private static convertToDate(dateValue: unknown): Date {
+    if (!dateValue) {
+      return new Date(0) // Return epoch date for null/undefined
+    }
+
+    // If it's already a Date object
+    if (dateValue instanceof Date) {
+      return dateValue
+    }
+
+    // If it's a Firestore Timestamp
+    if (typeof dateValue === 'object' && dateValue !== null && 'toDate' in dateValue) {
+      try {
+        return (dateValue as Timestamp).toDate()
+      } catch (error) {
+        console.warn('Failed to convert Timestamp to Date:', error)
+        return new Date(0)
+      }
+    }
+
+    // If it's a string or number, try to parse it
+    if (typeof dateValue === 'string' || typeof dateValue === 'number') {
+      const parsed = new Date(dateValue)
+      return isNaN(parsed.getTime()) ? new Date(0) : parsed
+    }
+
+    // Fallback to epoch date
+    return new Date(0)
   }
 }

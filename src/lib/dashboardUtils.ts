@@ -14,31 +14,31 @@ export function formatCurrency(amount: number): string {
 export function getOrderStatusInfo(status: OrderStatus) {
   const statusConfig = {
     not_started: {
-      label: 'No iniciado',
-      description: 'Aún no has seleccionado ningún menú',
-      color: 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400',
+      label: 'Sin iniciar',
+      description: 'Comienza seleccionando los días que deseas almorzar esta semana',
+      color: 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-600',
       iconName: 'Clock',
-      actionText: 'Comenzar pedido'
+      actionText: 'Comenzar selección'
     },
     in_progress: {
       label: 'En progreso',
-      description: `${status.daysSelected} de ${status.totalDays} días seleccionados`,
-      color: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300',
+      description: `Continúa completando tu selección semanal`,
+      color: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800',
       iconName: 'Edit',
-      actionText: 'Continuar pedido'
+      actionText: 'Continuar selección'
     },
     confirmed: {
-      label: 'Confirmado',
-      description: 'Pedido completo, pendiente de pago',
-      color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
+      label: 'Listo para pagar',
+      description: 'Tu selección está completa. Procede al pago para confirmar tu pedido',
+      color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800',
       iconName: 'CheckCircle',
       actionText: 'Proceder al pago'
     },
     paid: {
-      label: 'Pagado',
-      description: 'Pedido confirmado y pagado',
-      color: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300',
-      iconName: 'CreditCard',
+      label: 'Pedido confirmado',
+      description: 'Tu pedido está completo y confirmado. Los almuerzos serán servidos según tu selección',
+      color: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800',
+      iconName: 'Package',
       actionText: 'Ver detalles'
     }
   }

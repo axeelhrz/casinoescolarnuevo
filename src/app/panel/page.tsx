@@ -6,7 +6,6 @@ import { motion } from 'framer-motion'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 import { Navbar } from '@/components/panel/Navbar'
 import { GreetingCard } from '@/components/panel/dashboard/GreetingCard'
-import { OrderStatusCard } from '@/components/panel/dashboard/OrderStatusCard'
 import { EconomicSummaryCard } from '@/components/panel/dashboard/EconomicSummaryCard'
 import { WeeklyMenuInfoCard } from '@/components/panel/dashboard/WeeklyMenuInfoCard'
 import { QuickActionsCard } from '@/components/panel/dashboard/QuickActionsCard'
@@ -15,22 +14,86 @@ import { WeeklyMenu } from '@/components/panel/WeeklyMenu'
 import { OrderSummary } from '@/components/panel/OrderSummary'
 import { useDashboardData } from '@/hooks/useDashboardData'
 import { useOrderStore } from '@/store/orderStore'
+import { MenuService } from '@/services/menuService'
+import { OrderService } from '@/services/orderService'
 import { DayMenu } from '@/types/panel'
-import { startOfWeek, format, addDays } from 'date-fns'
-import { es } from 'date-fns/locale'
-import { collection, addDoc } from 'firebase/firestore'
-import { db } from '@/app/lib/firebase'
+import { format, addDays } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Clock, DollarSign, Phone, Mail } from 'lucide-react'
+
+// Función para generar menú de ejemplo cuando no hay datos reales
+function generateMockMenu(weekStart: string, userType: 'funcionario' | 'apoderado'): DayMenu[] {
+  const startDate = new Date(weekStart)
+  const mockWeekMenu: DayMenu[] = []
+  
+  const basePrice = {
+    almuerzo: userType === 'funcionario' ? 4875 : 5500,
+    colacion: userType === 'funcionario' ? 1800 : 2000
+  }
+
+  const menuOptions = {
+    almuerzos: [
+      { name: 'Pollo al horno con papas', desc: 'Pollo al horno con papas doradas, ensalada mixta y postre' },
+      { name: 'Pescado a la plancha', desc: 'Pescado fresco a la plancha con arroz y verduras al vapor' },
+      { name: 'Pasta con salsa boloñesa', desc: 'Pasta fresca con salsa boloñesa casera y queso parmesano' },
+      { name: 'Lomo saltado', desc: 'Lomo saltado con papas fritas y arroz blanco' },
+      { name: 'Cazuela de pollo', desc: 'Cazuela tradicional con pollo, zapallo y choclo' }
+    ],
+    colaciones: [
+      { name: 'Sándwich de pavo', desc: 'Sándwich integral con pavo, palta y tomate' },
+      { name: 'Ensalada de frutas', desc: 'Mix de frutas frescas de temporada con yogurt' },
+      { name: 'Yogurt con granola', desc: 'Yogurt natural con granola casera y miel' },
+      { name: 'Wrap de pollo', desc: 'Wrap integral con pollo, lechuga y salsa césar' }
+    ]
+  }
+  
+  for (let i = 0; i < 5; i++) { // Solo días laborales
+    const currentDay = addDays(startDate, i)
+    const dayNames = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes']
+    
+    const dayMenu: DayMenu = {
+      date: format(currentDay, 'yyyy-MM-dd'),
+      day: dayNames[i],
+      almuerzos: menuOptions.almuerzos.slice(0, 3).map((option, idx) => ({
+        id: `almuerzo-${i}-${idx}`,
+        code: `A${idx + 1}`,
+        name: option.name,
+        description: option.desc,
+        type: 'almuerzo',
+        price: basePrice.almuerzo,
+        available: true,
+        date: format(currentDay, 'yyyy-MM-dd'),
+        dia: dayNames[i],
+        active: true
+      })),
+      colaciones: menuOptions.colaciones.slice(0, 2).map((option, idx) => ({
+        id: `colacion-${i}-${idx}`,
+        code: `C${idx + 1}`,
+        name: option.name,
+        description: option.desc,
+        type: 'colacion',
+        price: basePrice.colacion,
+        available: true,
+        date: format(currentDay, 'yyyy-MM-dd'),
+        dia: dayNames[i],
+        active: true
+      }))
+    }
+    mockWeekMenu.push(dayMenu)
+  }
+
+  return mockWeekMenu
+}
 
 export default function PanelPage() {
   const router = useRouter()
   const { dashboardData, isLoading, error } = useDashboardData()
   const [weekMenu, setWeekMenu] = useState<DayMenu[]>([])
+  const [isLoadingMenu, setIsLoadingMenu] = useState(false)
   const [isProcessingPayment, setIsProcessingPayment] = useState(false)
   const [showFullMenu, setShowFullMenu] = useState(false)
-  const { clearSelections, getOrderSummary } = useOrderStore()
+  const { clearSelections, getOrderSummary, userType } = useOrderStore()
 
   // Cargar menú de la semana
   useEffect(() => {
@@ -38,95 +101,48 @@ export default function PanelPage() {
       if (!dashboardData?.user) return
 
       try {
-        const today = new Date()
-        const weekStart = startOfWeek(today, { weekStartsOn: 1 })
-
-        // Generar datos de ejemplo (en producción vendría de Firestore)
-        const mockWeekMenu: DayMenu[] = []
+        setIsLoadingMenu(true)
         
-        for (let i = 0; i < 5; i++) {
-          const currentDay = addDays(weekStart, i)
-          const dayMenu: DayMenu = {
-            date: format(currentDay, 'yyyy-MM-dd'),
-            day: format(currentDay, 'EEEE', { locale: es }),
-            almuerzos: [
-              {
-                id: `almuerzo-${i}-1`,
-                code: 'A1',
-                name: 'Pollo al horno con papas',
-                description: 'Pollo al horno con papas doradas, ensalada mixta y postre',
-                type: 'almuerzo',
-                price: dashboardData.user.userType === 'funcionario' ? 4875 : 5500,
-                available: true,
-                date: format(currentDay, 'yyyy-MM-dd'),
-                dia: format(currentDay, 'EEEE', { locale: es }),
-                active: true
-              },
-              {
-                id: `almuerzo-${i}-2`,
-                code: 'A2',
-                name: 'Pescado a la plancha',
-                description: 'Pescado fresco a la plancha con arroz y verduras al vapor',
-                type: 'almuerzo',
-                price: dashboardData.user.userType === 'funcionario' ? 4875 : 5500,
-                available: true,
-                date: format(currentDay, 'yyyy-MM-dd'),
-                dia: format(currentDay, 'EEEE', { locale: es }),
-                active: true
-              },
-              {
-                id: `almuerzo-${i}-3`,
-                code: 'A3',
-                name: 'Pasta con salsa boloñesa',
-                description: 'Pasta fresca con salsa boloñesa casera y queso parmesano',
-                type: 'almuerzo',
-                price: dashboardData.user.userType === 'funcionario' ? 4875 : 5500,
-                available: true,
-                date: format(currentDay, 'yyyy-MM-dd'),
-                dia: format(currentDay, 'EEEE', { locale: es }),
-                active: true
-              }
-            ],
-            colaciones: [
-              {
-                id: `colacion-${i}-1`,
-                code: 'C1',
-                name: 'Sándwich de pavo',
-                description: 'Sándwich integral con pavo, palta y tomate',
-                type: 'colacion',
-                price: dashboardData.user.userType === 'funcionario' ? 1800 : 2000,
-                available: true,
-                date: format(currentDay, 'yyyy-MM-dd'),
-                dia: format(currentDay, 'EEEE', { locale: es }),
-                active: true
-              },
-              {
-                id: `colacion-${i}-2`,
-                code: 'C2',
-                name: 'Ensalada de frutas',
-                description: 'Mix de frutas frescas de temporada con yogurt',
-                type: 'colacion',
-                price: dashboardData.user.userType === 'funcionario' ? 1800 : 2000,
-                available: true,
-                date: format(currentDay, 'yyyy-MM-dd'),
-                dia: format(currentDay, 'EEEE', { locale: es }),
-                active: true
-              }
-            ]
-          }
-          mockWeekMenu.push(dayMenu)
+        // Obtener información de la semana actual
+        const weekInfo = MenuService.getCurrentWeekInfo()
+        
+        // Verificar si hay menú disponible
+        const hasMenu = await MenuService.hasMenusForWeek(weekInfo.weekStart)
+        
+        if (hasMenu) {
+          // Cargar menú real desde Firebase
+          const menuData = await MenuService.getWeeklyMenuForUser(dashboardData.user, weekInfo.weekStart)
+          
+          // Convertir a formato DayMenu
+          const dayMenus: DayMenu[] = menuData.map(day => ({
+            date: day.date,
+            day: day.day,
+            almuerzos: day.almuerzos,
+            colaciones: day.colaciones
+          }))
+          
+          setWeekMenu(dayMenus)
+        } else {
+          // Si no hay menú, generar datos de ejemplo para mostrar la estructura
+          console.log('No menu available, showing example structure')
+          const mockWeekMenu = generateMockMenu(weekInfo.weekStart, userType)
+          setWeekMenu(mockWeekMenu)
         }
-
-        setWeekMenu(mockWeekMenu)
       } catch (error) {
         console.error('Error al cargar el menú:', error)
+        // En caso de error, mostrar menú de ejemplo
+        const weekInfo = MenuService.getCurrentWeekInfo()
+        const mockWeekMenu = generateMockMenu(weekInfo.weekStart, userType)
+        setWeekMenu(mockWeekMenu)
+      } finally {
+        setIsLoadingMenu(false)
       }
     }
 
     if (dashboardData?.user) {
       loadWeekMenu()
     }
-  }, [dashboardData?.user])
+  }, [dashboardData?.user, userType])
 
   const handleLogout = async () => {
     try {
@@ -144,27 +160,70 @@ export default function PanelPage() {
     
     try {
       const summary = getOrderSummary()
+      const weekInfo = MenuService.getCurrentWeekInfo()
       
-      // Crear orden en Firestore
-      const orderData = {
-        userId: dashboardData.user.id,
-        weekStart: format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd'),
-        selections: summary.selections,
-        total: summary.total,
-        status: 'pending',
-        createdAt: new Date()
+      // Validar que se puede proceder al pago
+      if (summary.selections.length === 0) {
+        throw new Error('No hay selecciones para procesar')
       }
 
-      await addDoc(collection(db, 'orders'), orderData)
+      // Verificar si ya existe un pedido para esta semana
+      let existingOrder = null
+      try {
+        existingOrder = await OrderService.getUserOrder(dashboardData.user.id, weekInfo.weekStart)
+      } catch {
+        console.log('No existing order found')
+      }
+
+      // Preparar datos del pedido
+      const orderData = {
+        userId: dashboardData.user.id,
+        tipoUsuario: userType,
+        weekStart: weekInfo.weekStart,
+        resumenPedido: summary.selections.map(selection => ({
+          date: selection.date,
+          dia: MenuService.getDayName(selection.date),
+          fecha: selection.date,
+          hijo: null, // Para funcionarios es null, para apoderados se manejará en mi-pedido
+          almuerzo: selection.almuerzo,
+          colacion: selection.colacion
+        })),
+        total: summary.total,
+        status: 'pendiente' as const
+      }
+
+      let orderId: string
+
+      if (existingOrder) {
+        // Actualizar pedido existente
+        await OrderService.updateOrder(existingOrder.id!, {
+          resumenPedido: orderData.resumenPedido,
+          total: orderData.total,
+          status: 'pendiente'
+        })
+        orderId = existingOrder.id!
+      } else {
+        // Crear nuevo pedido
+        orderId = await OrderService.saveOrder(orderData)
+      }
+
+      // Simular redirección a pasarela de pago
+      console.log('Redirecting to payment gateway for order:', orderId)
       
-      // Simular proceso de pago
+      // En un entorno real, aquí se redirigiría a GetNet o la pasarela de pago
+      // Por ahora, simular el proceso
       await new Promise(resolve => setTimeout(resolve, 2000))
       
-      const paymentSuccess = Math.random() > 0.1 // 90% de éxito
+      const paymentSuccess = Math.random() > 0.1 // 90% de éxito para demo
       
       if (paymentSuccess) {
+        // Marcar como pagado
+        await OrderService.markOrderAsPaid(orderId, `payment_${Date.now()}`)
         alert('¡Pago realizado con éxito! Tu pedido ha sido confirmado.')
         clearSelections()
+        
+        // Recargar la página para actualizar los datos
+        window.location.reload()
       } else {
         throw new Error('Error en el procesamiento del pago')
       }
@@ -183,7 +242,7 @@ export default function PanelPage() {
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center">
-            <div className="loading-spinner w-8 h-8 mx-auto mb-4"></div>
+            <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
             <p className="text-slate-600 dark:text-slate-400 text-clean">
               Cargando panel...
             </p>
@@ -246,9 +305,8 @@ export default function PanelPage() {
           {/* Saludo personalizado */}
           <GreetingCard user={dashboardData.user} />
 
-          {/* Grid de tarjetas principales */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <OrderStatusCard orderStatus={dashboardData.orderStatus} />
+          {/* Grid de tarjetas principales - sin OrderStatusCard */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <EconomicSummaryCard economicSummary={dashboardData.economicSummary} />
             <WeeklyMenuInfoCard weeklyMenuInfo={dashboardData.weeklyMenuInfo} />
           </div>
@@ -304,7 +362,7 @@ export default function PanelPage() {
               <div className="lg:col-span-2">
                 <WeeklyMenu 
                   weekMenu={weekMenu} 
-                  isLoading={false}
+                  isLoading={isLoadingMenu}
                 />
               </div>
 

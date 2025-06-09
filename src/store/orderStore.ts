@@ -185,13 +185,24 @@ export const useOrderStore = create<OrderState>()(
         
         if (existingIndex >= 0) {
           const updated = [...selectionsByChild]
+          const currentSelection = updated[existingIndex]
+          
           if (item) {
-            updated[existingIndex] = { ...updated[existingIndex], [field]: item }
+            // Agregar o actualizar el campo
+            updated[existingIndex] = { ...currentSelection, [field]: item }
           } else {
-            // Remover el campo si item es undefined
-            const { ...rest } = updated[existingIndex]
-            updated[existingIndex] = rest as OrderSelectionByChild
+            // Remover el campo específico
+            const newSelection = { ...currentSelection }
+            delete newSelection[field]
+            
+            // Si no quedan almuerzo ni colacion, eliminar toda la selección
+            if (!newSelection.almuerzo && !newSelection.colacion) {
+              updated.splice(existingIndex, 1)
+            } else {
+              updated[existingIndex] = newSelection
+            }
           }
+          
           set({ selectionsByChild: updated })
         } else if (item) {
           // Solo crear nueva selección si hay un item
@@ -258,18 +269,25 @@ export const useOrderStore = create<OrderState>()(
           if (selection.almuerzo) {
             totalAlmuerzos++
             resumenPorHijo[hijoId].almuerzos++
-            resumenPorHijo[hijoId].subtotal += prices.almuerzo
+            resumenPorHijo[hijoId].subtotal += selection.almuerzo.price
           }
           
           if (selection.colacion) {
             totalColaciones++
             resumenPorHijo[hijoId].colaciones++
-            resumenPorHijo[hijoId].subtotal += prices.colacion
+            resumenPorHijo[hijoId].subtotal += selection.colacion.price
           }
         })
         
-        const subtotalAlmuerzos = totalAlmuerzos * prices.almuerzo
-        const subtotalColaciones = totalColaciones * prices.colacion
+        // Calcular totales usando los precios reales de los items
+        const subtotalAlmuerzos = selectionsByChild
+          .filter(s => s.almuerzo)
+          .reduce((sum, s) => sum + (s.almuerzo?.price || 0), 0)
+        
+        const subtotalColaciones = selectionsByChild
+          .filter(s => s.colacion)
+          .reduce((sum, s) => sum + (s.colacion?.price || 0), 0)
+        
         const total = subtotalAlmuerzos + subtotalColaciones
         
         return {
