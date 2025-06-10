@@ -36,10 +36,37 @@ export function useDashboardData() {
           throw new Error('Usuario no encontrado')
         }
 
-        const userData = userDoc.data() as Omit<DashboardUser, 'id'>
+        const userData = userDoc.data()
         const user: DashboardUser = {
-          ...userData,
-          id: firebaseUser.uid
+          id: firebaseUser.uid,
+          firstName: userData.firstName || userData.nombre || '',
+          lastName: userData.lastName || userData.apellido || '',
+          email: userData.email || userData.correo || firebaseUser.email || '',
+          userType: userData.userType || userData.tipoUsuario || 'funcionario',
+          tipoUsuario: userData.tipoUsuario || userData.userType || 'funcionario',
+          active: userData.active !== undefined ? userData.active : true,
+          createdAt: userData.createdAt ? userData.createdAt.toDate() : new Date(),
+          children: userData.children ? userData.children.map((child: {
+            id: string;
+            name?: string;
+            nombre?: string;
+            age?: number;
+            edad?: number;
+            class?: string;
+            curso?: string;
+            level?: string;
+            rut?: string;
+            active?: boolean;
+          }) => ({
+            id: child.id,
+            name: child.name || child.nombre,
+            age: child.age || child.edad || 0,
+            class: child.class || child.curso || '',
+            level: child.level || 'Pre School',
+            curso: child.curso || child.class || '',
+            rut: child.rut,
+            active: child.active !== undefined ? child.active : true
+          })) : undefined
         }
 
         // Establecer tipo de usuario en el store

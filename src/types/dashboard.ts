@@ -3,13 +3,19 @@ export interface DashboardUser {
   firstName: string
   lastName: string
   email: string
-  userType: 'funcionario' | 'estudiante'
+  userType: 'funcionario' | 'apoderado'
+  tipoUsuario: 'funcionario' | 'apoderado'
+  active: boolean
+  createdAt: Date
   children?: Array<{
     id: string
     name: string
     age: number
     class: string
     level: 'Pre School' | 'Lower School' | 'Middle School' | 'High School'
+    curso: string
+    rut?: string
+    active: boolean
   }>
 }
 

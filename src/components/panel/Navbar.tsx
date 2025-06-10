@@ -63,7 +63,7 @@ const navigationItems: NavigationItem[] = [
     description: 'Menú semanal disponible'
   },
   {
-    name: 'Mi Pedido',
+    name: 'Hacer Pedido',
     href: '/mi-pedido',
     icon: ShoppingCart,
     description: 'Gestionar pedido semanal'

@@ -95,7 +95,7 @@ export default function MiPedidoPage() {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800">
         <div className="container mx-auto px-4 py-8 space-y-6">
           <Skeleton className="h-16 w-full" />
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             <div className="lg:col-span-3 space-y-6">
               <Skeleton className="h-32 w-full" />
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -235,6 +235,7 @@ export default function MiPedidoPage() {
           </motion.div>
         )}
 
+        {/* Layout principal con grid */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Contenido principal */}
           <div className="lg:col-span-3 space-y-8">
@@ -554,20 +555,6 @@ export default function MiPedidoPage() {
                 )
               })}
             </motion.div>
-          </div>
-
-          {/* Sidebar - Resumen del pedido */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.6 }}
-            className="space-y-6"
-          >
-            <OrderSummary
-              user={user}
-              onProceedToPayment={processPayment}
-              isProcessingPayment={isProcessingPayment}
-            />
 
             {/* Botón de pago con GetNet */}
             {currentWeekMenu.length > 0 && (
@@ -583,7 +570,7 @@ export default function MiPedidoPage() {
                           Pago Seguro con GetNet
                         </h3>
                         <p className="text-sm text-slate-600 dark:text-slate-400">
-                          Integrado con Firebase
+                          Integrado con Firebase en tiempo real
                         </p>
                       </div>
                     </div>
@@ -609,10 +596,22 @@ export default function MiPedidoPage() {
                 </CardContent>
               </Card>
             )}
+          </div>
+
+          {/* Sidebar - Resumen del pedido */}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.6 }}
+            className="lg:col-span-1"
+          >
+            <OrderSummary
+              user={user}
+              onProceedToPayment={processPayment}
+              isProcessingPayment={isProcessingPayment}
+            />
           </motion.div>
         </div>
-
-        {/* Footer con información adicional */}
       </div>
     </div>
   )
