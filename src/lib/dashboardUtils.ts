@@ -65,11 +65,11 @@ export function getGreetingMessage(firstName: string): string {
   }
 }
 
-export function getUserTypeLabel(userType: 'funcionario' | 'estudiante'): string {
+export function getUserTypeLabel(userType: 'funcionario' | 'apoderado'): string {
   return userType === 'funcionario' ? 'Funcionario' : 'Apoderado'
 }
 
-export function getUserTypeBadgeColor(userType: 'funcionario' | 'estudiante'): string {
+export function getUserTypeBadgeColor(userType: 'funcionario' | 'apoderado'): string {
   return userType === 'funcionario' 
     ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
     : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'

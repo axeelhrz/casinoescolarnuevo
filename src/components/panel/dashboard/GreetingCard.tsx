@@ -64,7 +64,7 @@ export function GreetingCard({ user }: GreetingCardProps) {
               </div>
 
               {/* Información de hijos para apoderados */}
-              {user.userType === 'estudiante' && user.children && user.children.length > 0 && (
+              {user.userType === 'apoderado' && user.children && user.children.length > 0 && (
                 <motion.div 
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
