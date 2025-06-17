@@ -6,7 +6,7 @@ import { doc, updateDoc } from 'firebase/firestore'
 import { auth, db } from '@/app/lib/firebase'
 import useAuth from '@/hooks/useAuth'
 import { Child } from '@/types/panel'
-import { SchoolLevel, migrateCourseFormat, validateCourseFormat } from '@/lib/courseUtils'
+import { SchoolLevel, migrateCourseFormat, SCHOOL_LEVELS } from '@/lib/courseUtils'
 
 interface ProfileFormData {
   firstName: string
@@ -111,6 +111,7 @@ export function useProfileForm(): UseProfileFormReturn {
       }
       
       // Transform children to include edad and level properties with migration
+      // Ahora tanto apoderados como funcionarios pueden tener hijos
       const transformedChildren: ExtendedChild[] = (user.children || []).map(child => {
         // Migrar curso y nivel si es necesario
         const { curso: migratedCourse, level: migratedLevel } = migrateCourseFormat(
@@ -183,7 +184,7 @@ export function useProfileForm(): UseProfileFormReturn {
       active: true,
       edad: 0,
       age: 0,
-      level: 'Lower School'
+      level: 'Lower School' // Usar el nuevo sistema de niveles
       // Note: rut is omitted instead of being undefined
     }
     setChildren(prev => [...prev, newChild])
@@ -201,10 +202,7 @@ export function useProfileForm(): UseProfileFormReturn {
           updatedChild.edad = value as number
         }
         
-        // Si se cambia el nivel, limpiar el curso para que el usuario seleccione uno nuevo
-        if (field === 'level') {
-          updatedChild.curso = ''
-        }
+        // Si se cambia el nivel, NO limpiar el curso - permitir que el usuario mantenga lo que escribió
         
         return updatedChild
       }
@@ -259,28 +257,41 @@ export function useProfileForm(): UseProfileFormReturn {
       }
     }
 
-    // Validar hijos si es apoderado
-    if (user?.tipoUsuario === 'apoderado' && children.length > 0) {
+    // Validar hijos si se han agregado
+    if (children.length > 0) {
+      // Para apoderados, al menos un hijo es obligatorio
+      if (user?.tipoUsuario === 'apoderado') {
+        const validChildren = children.filter(child => safeTrim(child.name))
+        if (validChildren.length === 0) {
+          newErrors.general = 'Los apoderados deben tener al menos un hijo registrado'
+        }
+      }
+      
+      // Validar cada hijo que tenga información
       children.forEach((child, index) => {
-        if (!safeTrim(child.name)) {
-          newErrors[`child_${child.id}_name`] = `Nombre del hijo ${index + 1} es requerido`
-        }
-        if (!child.edad || child.edad < 1 || child.edad > 18) {
-          newErrors[`child_${child.id}_edad`] = `Edad del hijo ${index + 1} debe estar entre 1 y 18 años`
-        }
-        if (!safeTrim(child.curso)) {
-          newErrors[`child_${child.id}_curso`] = `Curso del hijo ${index + 1} es requerido`
-        } else if (!validateCourseFormat(child.curso, child.level)) {
-          newErrors[`child_${child.id}_curso`] = `Formato de curso inválido para hijo ${index + 1}. Debe seguir el formato del nivel seleccionado.`
-        }
-        if (!child.level) {
-          newErrors[`child_${child.id}_level`] = `Nivel educativo del hijo ${index + 1} es requerido`
-        }
-        // Validar RUT si se proporciona
-        if (child.rut && safeTrim(child.rut)) {
-          const rutRegex = /^[0-9]+-[0-9kK]$/
-          if (!rutRegex.test(safeTrim(child.rut))) {
-            newErrors[`child_${child.id}_rut`] = `Formato de RUT inválido para hijo ${index + 1}. Debe ser: 12345678-9`
+        const childName = safeTrim(child.name)
+        
+        // Si el hijo tiene nombre, validar todos sus campos
+        if (childName) {
+          if (!child.edad || child.edad < 1 || child.edad > 18) {
+            newErrors[`child_${child.id}_edad`] = `Edad del hijo ${index + 1} debe estar entre 1 y 18 años`
+          }
+          
+          // VALIDACIÓN SIMPLIFICADA DEL CURSO - solo verificar que no esté vacío
+          if (!safeTrim(child.curso)) {
+            newErrors[`child_${child.id}_curso`] = `Curso del hijo ${index + 1} es requerido`
+          }
+          
+          if (!child.level || !SCHOOL_LEVELS.includes(child.level)) {
+            newErrors[`child_${child.id}_level`] = `Nivel educativo del hijo ${index + 1} es requerido`
+          }
+          
+          // Validar RUT si se proporciona
+          if (child.rut && safeTrim(child.rut)) {
+            const rutRegex = /^[0-9]+-[0-9kK]$/
+            if (!rutRegex.test(safeTrim(child.rut))) {
+              newErrors[`child_${child.id}_rut`] = `Formato de RUT inválido para hijo ${index + 1}. Debe ser: 12345678-9`
+            }
           }
         }
       })
@@ -322,37 +333,40 @@ export function useProfileForm(): UseProfileFormReturn {
       }
 
       // Transform children back to the format expected by the database
-      const transformedChildren = children.map(child => {
-        const childName = safeTrim(child.name)
-        const childCurso = safeTrim(child.curso)
-        const childRut = child.rut ? safeTrim(child.rut) : undefined
-        
-        const childData: {
-          id: string
-          name: string
-          curso: string
-          active: boolean
-          age: number
-          edad: number
-          level: SchoolLevel
-          rut?: string
-        } = {
-          id: child.id,
-          name: childName,
-          curso: childCurso,
-          active: child.active !== undefined ? child.active : true,
-          age: child.edad || child.age || 0,
-          edad: child.edad || child.age || 0,
-          level: child.level
-        }
-        
-        // Only include rut if it has a value
-        if (childRut) {
-          childData.rut = childRut
-        }
-        
-        return childData
-      }).filter(child => child.name.trim() !== '') // Solo guardar hijos con nombre
+      // Filtrar solo hijos con nombre válido
+      const transformedChildren = children
+        .filter(child => safeTrim(child.name)) // Solo hijos con nombre
+        .map(child => {
+          const childName = safeTrim(child.name)
+          const childCurso = safeTrim(child.curso)
+          const childRut = child.rut ? safeTrim(child.rut) : undefined
+          
+          const childData: {
+            id: string
+            name: string
+            curso: string
+            active: boolean
+            age: number
+            edad: number
+            level: SchoolLevel
+            rut?: string
+          } = {
+            id: child.id,
+            name: childName,
+            curso: childCurso,
+            active: child.active !== undefined ? child.active : true,
+            age: child.edad || child.age || 0,
+            edad: child.edad || child.age || 0,
+            level: child.level
+          }
+          
+          // Only include rut if it has a value
+          if (childRut) {
+            childData.rut = childRut
+          }
+          
+          return childData
+        })
 
       // Prepare update data, ensuring no undefined values
       const updateData: {

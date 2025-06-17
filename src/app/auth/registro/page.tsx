@@ -135,14 +135,17 @@ export default function RegistroPage() {
       return false
     }
 
-    // Validar datos de hijos si es apoderado
-    if (formData.userType === "apoderado") {
-      const validChildren = children.filter(child => child.name.trim() !== "")
-      if (validChildren.length === 0) {
-        setError("Los apoderados deben agregar al menos un hijo")
-        return false
-      }
-      
+    // Validar datos de hijos si se han agregado (tanto para apoderados como funcionarios)
+    const validChildren = children.filter(child => child.name.trim() !== "")
+    
+    // Para apoderados, al menos un hijo es obligatorio
+    if (formData.userType === "apoderado" && validChildren.length === 0) {
+      setError("Los apoderados deben agregar al menos un hijo")
+      return false
+    }
+    
+    // Para funcionarios, los hijos son opcionales, pero si se agregan deben ser válidos
+    if (validChildren.length > 0) {
       for (const child of validChildren) {
         if (!child.name.trim()) {
           setError("El nombre del hijo es requerido")
@@ -160,8 +163,6 @@ export default function RegistroPage() {
           setError("El nivel educativo del hijo es requerido")
           return false
         }
-        // Eliminamos la validación restrictiva del formato del curso
-        // Ahora solo validamos que no esté vacío
         
         // Validar RUT si se proporciona
         if (child.rut && child.rut.trim()) {
@@ -201,34 +202,32 @@ export default function RegistroPage() {
         displayName: `${formData.firstName.trim()} ${formData.lastName.trim()}`
       })
 
-      // Preparar datos de los hijos (solo para apoderados) - CORREGIDO para evitar undefined
-      const validChildren = formData.userType === "apoderado" 
-        ? children.filter(child => child.name.trim() !== "").map(child => ({
-            id: child.id.toString(),
-            name: child.name.trim(),
-            age: parseInt(child.age) || 0,
-            edad: parseInt(child.age) || 0,
-            curso: child.class.trim(),
-            level: child.level,
-            rut: child.rut.trim() || null, // Usar null en lugar de undefined
-            active: true
-          }))
-        : []
+      // Preparar datos de los hijos (para apoderados y funcionarios con hijos)
+      const validChildren = children.filter(child => child.name.trim() !== "").map(child => ({
+        id: child.id.toString(),
+        name: child.name.trim(),
+        age: parseInt(child.age) || 0,
+        edad: parseInt(child.age) || 0,
+        curso: child.class.trim(),
+        level: child.level,
+        rut: child.rut.trim() || null,
+        active: true
+      }))
 
-      // Guardar datos adicionales en Firestore - CORREGIDO para evitar undefined
+      // Guardar datos adicionales en Firestore
       const userData = {
         id: user.uid,
         email: formData.email.trim().toLowerCase(),
         firstName: formData.firstName.trim(),
         lastName: formData.lastName.trim(),
         userType: formData.userType,
-        tipoUsuario: formData.userType, // Mantener compatibilidad
+        tipoUsuario: formData.userType,
         children: validChildren,
         isActive: true,
         active: true,
         createdAt: new Date(),
         updatedAt: new Date(),
-        phone: null // Usar null en lugar de undefined
+        phone: null
       }
 
       // Filtrar cualquier valor undefined antes de guardar
@@ -438,7 +437,7 @@ export default function RegistroPage() {
                 />
               </motion.div>
 
-              {/* User Type Selection - Más compacto */}
+              {/* User Type Selection */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -493,7 +492,7 @@ export default function RegistroPage() {
                         Funcionario
                       </label>
                       <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
-                        Trabajador del colegio. Gestiona tu propio menú.
+                        Trabajador del colegio. Gestiona tu menú y el de tus hijos.
                       </p>
                     </div>
                   </motion.div>
@@ -545,8 +544,8 @@ export default function RegistroPage() {
                 </motion.div>
               </div>
 
-              {/* Children Section - Solo para apoderados - Actualizado con nuevos niveles */}
-              {formData.userType === "apoderado" && (
+              {/* Children Section - Para apoderados (obligatorio) y funcionarios (opcional) */}
+              {formData.userType && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
@@ -558,9 +557,18 @@ export default function RegistroPage() {
                     <div className="flex items-center space-x-2 mb-3">
                       <GraduationCap className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                       <h3 className="text-base font-medium text-slate-800 dark:text-slate-200 text-clean">
-                        Información de tus hijos *
+                        {formData.userType === "apoderado" 
+                          ? "Información de tus hijos *" 
+                          : "Información de tus hijos (opcional)"
+                        }
                       </h3>
                     </div>
+                    
+                    {formData.userType === "funcionario" && (
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-3">
+                        Como funcionario, puedes agregar información de tus hijos para gestionar también sus menús.
+                      </p>
+                    )}
                     
                     {children.map((child, index) => (
                       <motion.div
@@ -597,7 +605,7 @@ export default function RegistroPage() {
                               onChange={(e) => handleChildChange(child.id, 'name', e.target.value)}
                               placeholder="Nombre completo del hijo/a"
                               disabled={isLoading}
-                              required
+                              required={formData.userType === "apoderado"}
                               className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-300"
                             />
                           </div>
@@ -615,7 +623,7 @@ export default function RegistroPage() {
                                 min="3"
                                 max="18"
                                 disabled={isLoading}
-                                required
+                                required={formData.userType === "apoderado"}
                                 className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-300"
                               />
                             </div>

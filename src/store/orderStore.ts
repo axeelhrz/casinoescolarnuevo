@@ -17,7 +17,7 @@ interface OrderState {
   isLoading: boolean
   
   selectionsByChild: OrderSelectionByChild[]
-  currentChild: Child | null
+  currentChild: Child | null // null representa al funcionario
   children: Child[]
   
   setUserType: (type: UserType) => void
@@ -51,7 +51,7 @@ export const useOrderStore = create<OrderState>()(
       isLoading: false,
       
       selectionsByChild: [],
-      currentChild: null,
+      currentChild: null, // null representa al funcionario
       children: [],
 
       setUserType: (type: UserType) => set({ userType: type }),
@@ -210,7 +210,7 @@ export const useOrderStore = create<OrderState>()(
             date,
             dia: '', // Se llenará desde el componente
             fecha: date,
-            hijo: child,
+            hijo: child, // null para funcionarios
             [field]: item
           }
           set({ selectionsByChild: [...selectionsByChild, newSelection] })
@@ -255,11 +255,17 @@ export const useOrderStore = create<OrderState>()(
         const resumenPorHijo: OrderSummaryByChild['resumenPorHijo'] = {}
         
         selectionsByChild.forEach(selection => {
+          // Para funcionarios sin hijo seleccionado, usar 'funcionario' como ID
           const hijoId = selection.hijo?.id || 'funcionario'
           
           if (!resumenPorHijo[hijoId]) {
             resumenPorHijo[hijoId] = {
-              hijo: selection.hijo || { id: 'funcionario', name: 'Funcionario', curso: '', active: true },
+              hijo: selection.hijo || { 
+                id: 'funcionario', 
+                name: 'Funcionario', 
+                curso: 'Personal', 
+                active: true 
+              },
               almuerzos: 0,
               colaciones: 0,
               subtotal: 0

@@ -81,8 +81,8 @@ export function PaymentButton({
         <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800">
           <Info className="h-4 w-4 text-blue-600" />
           <AlertDescription className="text-blue-800 dark:text-blue-200">
-            <strong>Nuevo:</strong> Ahora puedes pagar con solo 1 almuerzo seleccionado. 
-            No necesitas completar toda la semana.
+            <strong>¡Máxima flexibilidad!</strong> Ahora puedes pedir solo almuerzos, solo colaciones, o ambos. 
+            No hay restricciones entre tipos de menú.
           </AlertDescription>
         </Alert>
 
@@ -157,13 +157,20 @@ export function PaymentButton({
           </div>
         )}
 
-        {/* Estado del pedido */}
-        {summary.totalAlmuerzos > 0 && (
+        {/* Estado del pedido - Actualizado para mostrar flexibilidad */}
+        {(summary.totalAlmuerzos > 0 || summary.totalColaciones > 0) && (
           <Alert className="border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-800">
             <CheckCircle className="h-4 w-4 text-green-600" />
             <AlertDescription className="text-green-800 dark:text-green-200">
-              ¡Perfecto! Tienes {summary.totalAlmuerzos} almuerzo(s) seleccionado(s). 
-              Puedes proceder con el pago.
+              {summary.totalAlmuerzos > 0 && summary.totalColaciones > 0 && (
+                <>¡Perfecto! Tienes {summary.totalAlmuerzos} almuerzo(s) y {summary.totalColaciones} colación(es) seleccionados. Puedes proceder con el pago.</>
+              )}
+              {summary.totalAlmuerzos > 0 && summary.totalColaciones === 0 && (
+                <>¡Perfecto! Tienes {summary.totalAlmuerzos} almuerzo(s) seleccionado(s). Puedes proceder con el pago.</>
+              )}
+              {summary.totalAlmuerzos === 0 && summary.totalColaciones > 0 && (
+                <>¡Perfecto! Tienes {summary.totalColaciones} colación(es) seleccionada(s). Puedes proceder con el pago.</>
+              )}
             </AlertDescription>
           </Alert>
         )}
@@ -198,7 +205,7 @@ export function PaymentButton({
               <CreditCard className="w-4 h-4 mr-2" />
               {summary.total > 0 
                 ? `Pagar $${summary.total.toLocaleString('es-CL')}`
-                : 'Selecciona al menos un almuerzo'
+                : 'Selecciona al menos un almuerzo o colación'
               }
             </>
           )}
@@ -212,14 +219,15 @@ export function PaymentButton({
           }
         </p>
 
-        {/* Información sobre flexibilidad */}
+        {/* Información sobre flexibilidad - Actualizada */}
         <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
           <div className="text-xs text-slate-600 dark:text-slate-400 space-y-1">
-            <p className="font-medium">💡 Pedidos flexibles:</p>
-            <p>• Solo necesitas 1 almuerzo para pagar</p>
-            <p>• Puedes agregar más días después del pago</p>
-            <p>• Las colaciones son opcionales</p>
-            <p>• No necesitas completar toda la semana</p>
+            <p className="font-medium">🎉 Pedidos completamente flexibles:</p>
+            <p>• Puedes pedir solo almuerzos</p>
+            <p>• Puedes pedir solo colaciones</p>
+            <p>• Puedes combinar ambos como prefieras</p>
+            <p>• No hay restricciones entre tipos de menú</p>
+            <p>• Agrega más días después del pago cuando quieras</p>
           </div>
         </div>
       </CardContent>

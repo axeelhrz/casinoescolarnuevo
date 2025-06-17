@@ -38,6 +38,8 @@ export function OrderSummary({ user, onProceedToPayment, isProcessingPayment }: 
   const summary = getOrderSummaryByChild()
   const hasSelections = summary.selections.length > 0
   const hasAlmuerzos = summary.totalAlmuerzos > 0
+  const hasColaciones = summary.totalColaciones > 0
+  const hasAnyItems = hasAlmuerzos || hasColaciones
 
   const handleRemoveSelection = (date: string, childId?: string) => {
     removeSelectionByChild(date, childId)
@@ -99,8 +101,8 @@ export function OrderSummary({ user, onProceedToPayment, isProcessingPayment }: 
               <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800 p-3">
                 <Info className="h-4 w-4 text-blue-600 flex-shrink-0" />
                 <AlertDescription className="text-blue-800 dark:text-blue-200 text-xs leading-relaxed">
-                  <strong>Pedidos flexibles:</strong> Puedes pagar con solo un almuerzo. 
-                  Después podrás agregar más días.
+                  <strong>¡Máxima flexibilidad!</strong> Puedes pagar solo almuerzos, solo colaciones, o ambos. 
+                  No hay restricciones entre tipos de menú.
                 </AlertDescription>
               </Alert>
 
@@ -226,16 +228,18 @@ export function OrderSummary({ user, onProceedToPayment, isProcessingPayment }: 
 
               {/* Resumen total */}
               <div className="space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-600 dark:text-slate-400 truncate flex-1 mr-2">
-                    Total Almuerzos ({summary.totalAlmuerzos})
-                  </span>
-                  <span className="text-slate-900 dark:text-slate-100 flex-shrink-0">
-                    {formatPrice(summary.subtotalAlmuerzos)}
-                  </span>
-                </div>
+                {hasAlmuerzos && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-600 dark:text-slate-400 truncate flex-1 mr-2">
+                      Total Almuerzos ({summary.totalAlmuerzos})
+                    </span>
+                    <span className="text-slate-900 dark:text-slate-100 flex-shrink-0">
+                      {formatPrice(summary.subtotalAlmuerzos)}
+                    </span>
+                  </div>
+                )}
                 
-                {summary.totalColaciones > 0 && (
+                {hasColaciones && (
                   <div className="flex justify-between text-sm">
                     <span className="text-slate-600 dark:text-slate-400 truncate flex-1 mr-2">
                       Total Colaciones ({summary.totalColaciones})
@@ -258,19 +262,27 @@ export function OrderSummary({ user, onProceedToPayment, isProcessingPayment }: 
 
               {/* Validación y botón de pago */}
               <div className="space-y-4">
-                {/* Mensaje de validación */}
-                {!hasAlmuerzos ? (
+                {/* Mensaje de validación actualizado */}
+                {!hasAnyItems ? (
                   <Alert variant="destructive" className="p-3">
                     <AlertCircle className="w-4 h-4 flex-shrink-0" />
                     <AlertDescription className="text-sm">
-                      Debes seleccionar al menos un almuerzo para proceder.
+                      Debes seleccionar al menos un almuerzo o colación para proceder.
                     </AlertDescription>
                   </Alert>
                 ) : (
                   <Alert className="border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-800 p-3">
                     <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
                     <AlertDescription className="text-green-800 dark:text-green-200 text-sm">
-                      ¡Perfecto! Tienes {summary.totalAlmuerzos} almuerzo(s) seleccionado(s).
+                      {hasAlmuerzos && hasColaciones && (
+                        <>¡Perfecto! Tienes {summary.totalAlmuerzos} almuerzo(s) y {summary.totalColaciones} colación(es) seleccionados.</>
+                      )}
+                      {hasAlmuerzos && !hasColaciones && (
+                        <>¡Perfecto! Tienes {summary.totalAlmuerzos} almuerzo(s) seleccionado(s).</>
+                      )}
+                      {!hasAlmuerzos && hasColaciones && (
+                        <>¡Perfecto! Tienes {summary.totalColaciones} colación(es) seleccionada(s).</>
+                      )}
                     </AlertDescription>
                   </Alert>
                 )}
@@ -278,9 +290,9 @@ export function OrderSummary({ user, onProceedToPayment, isProcessingPayment }: 
                 {/* Botón de pago con estilo premium */}
                 <Button
                   onClick={onProceedToPayment}
-                  disabled={!hasAlmuerzos || isProcessingPayment}
+                  disabled={!hasAnyItems || isProcessingPayment}
                   className={`w-full relative overflow-hidden transition-all duration-300 h-14 text-lg font-semibold ${
-                    hasAlmuerzos 
+                    hasAnyItems 
                       ? 'bg-gradient-to-r from-emerald-500 via-emerald-600 to-emerald-700 hover:from-emerald-600 hover:via-emerald-700 hover:to-emerald-800 shadow-lg hover:shadow-xl transform hover:scale-[1.02] border-0' 
                       : 'bg-slate-300 dark:bg-slate-700'
                   }`}
@@ -290,7 +302,7 @@ export function OrderSummary({ user, onProceedToPayment, isProcessingPayment }: 
                       <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-3 flex-shrink-0" />
                       <span className="truncate">Procesando pago...</span>
                     </>
-                  ) : hasAlmuerzos ? (
+                  ) : hasAnyItems ? (
                     <>
                       <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-white/5 animate-pulse" />
                       <Sparkles className="w-5 h-5 mr-3 flex-shrink-0 animate-pulse" />
@@ -330,9 +342,9 @@ export function OrderSummary({ user, onProceedToPayment, isProcessingPayment }: 
               <span className="font-medium text-slate-900 dark:text-slate-100">Información útil</span>
             </div>
             <div className="space-y-1 text-xs">
-              <p>• <strong>Pedidos flexibles:</strong> Puedes pagar con solo 1 almuerzo</p>
+              <p>• <strong>Pedidos completamente flexibles:</strong> Puedes pedir solo almuerzos, solo colaciones, o ambos</p>
+              <p>• <strong>Sin restricciones:</strong> No hay dependencias entre tipos de menú</p>
               <p>• <strong>Agregar después:</strong> Podrás añadir más días posteriormente</p>
-              <p>• <strong>Colaciones opcionales:</strong> No son obligatorias para el pago</p>
               <p>• <strong>Pago seguro:</strong> Procesado con GetNet y Firebase</p>
             </div>
           </div>

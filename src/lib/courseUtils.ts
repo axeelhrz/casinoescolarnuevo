@@ -52,7 +52,7 @@ export function getSchoolLevelInfo(level: SchoolLevel) {
   return config
 }
 
-// Función para obtener todos los cursos posibles de un nivel
+// Función para obtener todos los cursos posibles de un nivel (solo como sugerencias)
 export function getCoursesForLevel(level: SchoolLevel): string[] {
   const config = COURSE_CONFIG[level]
   if (!config) {
@@ -71,19 +71,10 @@ export function getCoursesForLevel(level: SchoolLevel): string[] {
   return courses
 }
 
-// Función para validar formato de curso
-export function validateCourseFormat(curso: string, level?: SchoolLevel): boolean {
-  if (!curso || curso.trim() === '') return false
-  
-  // Si se proporciona el nivel, validar contra los cursos permitidos
-  if (level) {
-    const validCourses = getCoursesForLevel(level)
-    return validCourses.includes(curso.trim())
-  }
-  
-  // Validación general: debe tener formato "Grado Sección" o ser Pre-K/Kinder
-  const coursePattern = /^(Pre-K|Kinder|\d+°)\s+[A-Z]$/
-  return coursePattern.test(curso.trim())
+// Función para validar formato de curso - AHORA MÁS FLEXIBLE
+export function validateCourseFormat(curso: string): boolean {
+  // Solo validar que no esté vacío
+  return !!(curso && curso.trim().length > 0)
 }
 
 // Función para generar sugerencias de curso basadas en el nivel
@@ -100,12 +91,15 @@ export function getLevelFromCourse(curso: string): SchoolLevel | null {
   const trimmedCourse = curso.trim()
   
   // Pre School
-  if (trimmedCourse.includes('Pre-K') || trimmedCourse.includes('Kinder')) {
+  if (trimmedCourse.toLowerCase().includes('pre-k') || 
+      trimmedCourse.toLowerCase().includes('kinder') ||
+      trimmedCourse.toLowerCase().includes('prekinder') ||
+      trimmedCourse.toLowerCase().includes('pre kinder')) {
     return 'Pre School'
   }
   
   // Extraer número del grado
-  const gradeMatch = trimmedCourse.match(/(\d+)°/)
+  const gradeMatch = trimmedCourse.match(/(\d+)/)
   if (gradeMatch) {
     const grade = parseInt(gradeMatch[1])
     
@@ -113,10 +107,8 @@ export function getLevelFromCourse(curso: string): SchoolLevel | null {
       return 'Lower School'
     } else if (grade >= 7 && grade <= 8) {
       return 'Middle School'
-    } else if (grade >= 1 && grade <= 4) {
-      // Podría ser media, pero necesitamos más contexto
-      // Por defecto asumimos que 1-4 sin más contexto es básica
-      return 'Lower School'
+    } else if (grade >= 9 && grade <= 12) {
+      return 'High School'
     }
   }
   
@@ -139,47 +131,33 @@ export function getLevelFromCourse(curso: string): SchoolLevel | null {
     }
   }
   
-  return null
+  // Por defecto, asumir Lower School si no se puede determinar
+  return 'Lower School'
 }
 
 // Función para migrar curso del formato antiguo al nuevo
 export function migrateCourseFormat(oldCourse: string, currentLevel?: SchoolLevel): { curso: string; level: SchoolLevel } {
   const trimmedCourse = oldCourse.trim()
   
-  // Si ya está en formato correcto y tenemos el nivel, usar tal como está
-  if (currentLevel && validateCourseFormat(trimmedCourse, currentLevel)) {
+  // Si ya tenemos un nivel válido y el curso no está vacío, usar tal como está
+  if (currentLevel && SCHOOL_LEVELS.includes(currentLevel) && trimmedCourse) {
     return { curso: trimmedCourse, level: currentLevel }
   }
   
-  // Intentar detectar el nivel automáticamente
-  const detectedLevel = getLevelFromCourse(trimmedCourse)
-  
-  if (detectedLevel) {
-    // Intentar normalizar el formato
-    let normalizedCourse = trimmedCourse
-    
-    // Normalizar formatos comunes
-    normalizedCourse = normalizedCourse
-      .replace(/(\d+)°?\s*(Básico|básico)/i, '$1°')
-      .replace(/(\d+)°?\s*(Medio|medio|Media|media)/i, '$1°')
-      .replace(/Pre\s*K/i, 'Pre-K')
-      .replace(/Kínder/i, 'Kinder')
-    
-    // Si no tiene sección, agregar A por defecto
-    if (/^\d+°$/.test(normalizedCourse) || normalizedCourse === 'Pre-K' || normalizedCourse === 'Kinder') {
-      normalizedCourse += ' A'
-    }
-    
-    // Validar el curso normalizado
-    if (validateCourseFormat(normalizedCourse, detectedLevel)) {
-      return { curso: normalizedCourse, level: detectedLevel }
+  // Si no hay curso, usar valores por defecto
+  if (!trimmedCourse) {
+    return {
+      curso: '',
+      level: currentLevel || 'Lower School'
     }
   }
   
-  // Si no se puede migrar automáticamente, usar valores por defecto
+  // Intentar detectar el nivel automáticamente si no se proporciona
+  const detectedLevel = currentLevel || getLevelFromCourse(trimmedCourse) || 'Lower School'
+  
   return {
-    curso: '1° A',
-    level: 'Lower School'
+    curso: trimmedCourse,
+    level: detectedLevel
   }
 }
 

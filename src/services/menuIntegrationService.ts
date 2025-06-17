@@ -651,7 +651,7 @@ export class MenuIntegrationService {
   }
 
   /**
-   * Validación de pedido completo más permisiva - MÉTODO EXISTENTE
+   * Validación de pedido completo más permisiva - ACTUALIZADO: Sin restricciones de almuerzo
    */
   private static async validateCompleteOrderPermissive(
     selections: OrderSelectionByChild[], 
@@ -663,10 +663,10 @@ export class MenuIntegrationService {
     const errors: string[] = []
     const warnings: string[] = []
     
-    // Verificar que hay al menos un almuerzo
-    const hasAlmuerzo = selections.some(s => s.almuerzo)
-    if (!hasAlmuerzo) {
-      errors.push('Debes seleccionar al menos un almuerzo')
+    // Verificar que hay al menos una selección (almuerzo O colación)
+    const hasItems = selections.some(s => s.almuerzo || s.colacion)
+    if (!hasItems) {
+      errors.push('Debes seleccionar al menos un almuerzo o colación')
     }
     
     // Verificar fechas válidas

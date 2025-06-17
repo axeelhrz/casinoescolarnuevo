@@ -7,6 +7,7 @@ import { useOrderStore } from '@/store/orderStore'
 import { useOrderManagement } from '@/hooks/useOrderManagement'
 import { Navbar } from '@/components/panel/Navbar'
 import { ChildSelector } from '@/components/mi-pedido/ChildSelector'
+import { FunctionaryChildSelector } from '@/components/mi-pedido/FunctionaryChildSelector'
 import { DaySelector } from '@/components/mi-pedido/DaySelector'
 import { MenuTypeSelector, MenuType } from '@/components/mi-pedido/MenuTypeSelector'
 import { OrderSummary } from '@/components/mi-pedido/OrderSummary'
@@ -20,14 +21,13 @@ import {
   AlertCircle, 
   RefreshCw,
   Calendar,
-  User as UserIcon,
   CalendarDays,
   Utensils,
   CreditCard,
   ExternalLink,
   Database,
   ArrowRight,
-  Coffee
+  Coffee,
 } from 'lucide-react'
 
 export default function MiPedidoPage() {
@@ -63,7 +63,8 @@ export default function MiPedidoPage() {
   useEffect(() => {
     if (user) {
       setUserType(user.tipoUsuario)
-      if (user.tipoUsuario === 'apoderado' && user.children) {
+      // Tanto apoderados como funcionarios pueden tener hijos
+      if (user.children) {
         setChildren(user.children.filter(child => child.active))
       }
     }
@@ -239,43 +240,18 @@ export default function MiPedidoPage() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Contenido principal */}
           <div className="lg:col-span-3 space-y-8">
-            {/* Selector de hijo (solo para apoderados) */}
-            {user.tipoUsuario === 'apoderado' && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-              >
+            {/* Selector de hijo/funcionario */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              {user.tipoUsuario === 'apoderado' ? (
                 <ChildSelector user={user} isReadOnly={false} />
-              </motion.div>
-            )}
-
-            {/* Información del usuario funcionario */}
-            {user.tipoUsuario === 'funcionario' && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-              >
-                <Card className="border-blue-200 bg-blue-50/50 dark:bg-blue-900/10 dark:border-blue-800">
-                  <CardContent className="p-6">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900/30">
-                        <UserIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                      </div>
-                      <div>
-                        <span className="font-semibold text-slate-900 dark:text-slate-100 text-lg">
-                          Pedido Personal
-                        </span>
-                        <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 ml-2">
-                          Funcionario
-                        </Badge>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            )}
+              ) : (
+                <FunctionaryChildSelector user={user} isReadOnly={false} />
+              )}
+            </motion.div>
 
             {/* Selector de tipo de menú */}
             <motion.div

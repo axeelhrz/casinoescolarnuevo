@@ -1,7 +1,7 @@
 "use client"
 
 import { motion } from 'framer-motion'
-import { ShoppingCart, Trash2, CreditCard, AlertCircle } from 'lucide-react'
+import { ShoppingCart, Trash2, CreditCard, AlertCircle, CheckCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useOrderStore } from '@/store/orderStore'
 import { format, parseISO } from 'date-fns'
@@ -23,8 +23,10 @@ export function OrderSummary({ onProceedToPayment, isProcessingPayment }: OrderS
     }).format(price)
   }
 
-  const canProceedToPayment = summary.selections.length > 0 && 
-    summary.selections.every(s => s.almuerzo) // Al menos almuerzo es obligatorio
+  // Actualizado: permitir pago con cualquier selección (almuerzo O colación)
+  const hasAnyItems = summary.selections.length > 0 && 
+    summary.selections.some(s => s.almuerzo || s.colacion)
+  const canProceedToPayment = hasAnyItems
 
   return (
     <motion.div
@@ -127,14 +129,16 @@ export function OrderSummary({ onProceedToPayment, isProcessingPayment }: OrderS
       {/* Totales */}
       {summary.selections.length > 0 && (
         <div className="border-t border-slate-200 dark:border-slate-600 pt-4 space-y-3">
-          <div className="flex justify-between text-sm">
-            <span className="text-slate-600 dark:text-slate-400 text-clean">
-              Almuerzos ({summary.totalAlmuerzos})
-            </span>
-            <span className="font-medium text-slate-800 dark:text-slate-100 text-clean">
-              {formatPrice(summary.subtotalAlmuerzos)}
-            </span>
-          </div>
+          {summary.totalAlmuerzos > 0 && (
+            <div className="flex justify-between text-sm">
+              <span className="text-slate-600 dark:text-slate-400 text-clean">
+                Almuerzos ({summary.totalAlmuerzos})
+              </span>
+              <span className="font-medium text-slate-800 dark:text-slate-100 text-clean">
+                {formatPrice(summary.subtotalAlmuerzos)}
+              </span>
+            </div>
+          )}
 
           {summary.totalColaciones > 0 && (
             <div className="flex justify-between text-sm">
@@ -162,11 +166,29 @@ export function OrderSummary({ onProceedToPayment, isProcessingPayment }: OrderS
 
       {/* Validación y botón de pago */}
       <div className="mt-6 space-y-3">
+        {/* Mensaje de estado actualizado */}
+        {summary.selections.length > 0 && canProceedToPayment && (
+          <div className="flex items-start space-x-2 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+            <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+            <p className="text-sm text-green-700 dark:text-green-300 text-clean">
+              {summary.totalAlmuerzos > 0 && summary.totalColaciones > 0 && (
+                <>¡Perfecto! Tienes {summary.totalAlmuerzos} almuerzo(s) y {summary.totalColaciones} colación(es).</>
+              )}
+              {summary.totalAlmuerzos > 0 && summary.totalColaciones === 0 && (
+                <>¡Perfecto! Tienes {summary.totalAlmuerzos} almuerzo(s) seleccionado(s).</>
+              )}
+              {summary.totalAlmuerzos === 0 && summary.totalColaciones > 0 && (
+                <>¡Perfecto! Tienes {summary.totalColaciones} colación(es) seleccionada(s).</>
+              )}
+            </p>
+          </div>
+        )}
+
         {summary.selections.length > 0 && !canProceedToPayment && (
           <div className="flex items-start space-x-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
             <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
             <p className="text-sm text-amber-700 dark:text-amber-300 text-clean">
-              Debes seleccionar al menos un almuerzo para cada día
+              Debes seleccionar al menos un almuerzo o colación para proceder
             </p>
           </div>
         )}

@@ -19,13 +19,15 @@ import {
   RefreshCw,
   Clock,
   Info,
-  GraduationCap
+  GraduationCap,
+  Edit3
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { SchoolLevelSelector } from '@/components/ui/school-level-selector'
 import { Navbar } from '@/components/panel/Navbar'
 import useAuth from '@/hooks/useAuth'
 import { useProfileForm } from '@/hooks/useProfileForm'
@@ -166,10 +168,10 @@ export default function PerfilPage() {
                 </Link>
               </div>
               <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100 text-elegant">
-                Mis datos
+                Mi Perfil
               </h1>
               <p className="text-slate-600 dark:text-slate-400 text-clean mt-1">
-                Modificá tu información de contacto y los datos de tus hijos si corresponde
+                Gestiona tu información personal y la de tus hijos
               </p>
               <div className="flex items-center space-x-3 mt-3">
                 <Badge className={getUserTypeBadgeColor()}>
@@ -267,33 +269,34 @@ export default function PerfilPage() {
                   <CardTitle className="flex items-center space-x-2">
                     <User className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                     <span>Información Personal</span>
+                    <Edit3 className="w-4 h-4 text-slate-400" />
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="panel-card-content space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="label-educational">
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                         Nombre *
                       </label>
                       <Input
                         value={formData.firstName}
                         onChange={(e) => updateFormData('firstName', e.target.value)}
                         placeholder="Tu nombre"
-                        className={errors.firstName ? 'border-red-500 focus:border-red-500' : ''}
+                        className={`transition-all duration-200 ${errors.firstName ? 'border-red-500 focus:border-red-500' : 'focus:border-blue-500'}`}
                       />
                       {errors.firstName && (
                         <p className="text-red-500 text-sm mt-1">{errors.firstName}</p>
                       )}
                     </div>
                     <div>
-                      <label className="label-educational">
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                         Apellido *
                       </label>
                       <Input
                         value={formData.lastName}
                         onChange={(e) => updateFormData('lastName', e.target.value)}
                         placeholder="Tu apellido"
-                        className={errors.lastName ? 'border-red-500 focus:border-red-500' : ''}
+                        className={`transition-all duration-200 ${errors.lastName ? 'border-red-500 focus:border-red-500' : 'focus:border-blue-500'}`}
                       />
                       {errors.lastName && (
                         <p className="text-red-500 text-sm mt-1">{errors.lastName}</p>
@@ -302,7 +305,7 @@ export default function PerfilPage() {
                   </div>
 
                   <div>
-                    <label className="label-educational">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                       Correo electrónico *
                     </label>
                     <Input
@@ -310,7 +313,7 @@ export default function PerfilPage() {
                       value={formData.email}
                       onChange={(e) => handleEmailChange(e.target.value)}
                       placeholder="tu@email.com"
-                      className={errors.email ? 'border-red-500 focus:border-red-500' : ''}
+                      className={`transition-all duration-200 ${errors.email ? 'border-red-500 focus:border-red-500' : 'focus:border-blue-500'}`}
                     />
                     {errors.email && (
                       <p className="text-red-500 text-sm mt-1">{errors.email}</p>
@@ -318,7 +321,7 @@ export default function PerfilPage() {
                   </div>
 
                   <div>
-                    <label className="label-educational">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                       Teléfono
                     </label>
                     <Input
@@ -326,7 +329,7 @@ export default function PerfilPage() {
                       value={formData.phone}
                       onChange={(e) => updateFormData('phone', e.target.value)}
                       placeholder="+56 9 1234 5678"
-                      className={errors.phone ? 'border-red-500 focus:border-red-500' : ''}
+                      className={`transition-all duration-200 ${errors.phone ? 'border-red-500 focus:border-red-500' : 'focus:border-blue-500'}`}
                     />
                     {errors.phone && (
                       <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
@@ -334,7 +337,7 @@ export default function PerfilPage() {
                   </div>
 
                   <div>
-                    <label className="label-educational">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                       Tipo de usuario
                     </label>
                     <div className="flex items-center space-x-2 mt-2">
@@ -349,97 +352,132 @@ export default function PerfilPage() {
                 </CardContent>
               </Card>
 
-              {/* Gestión de hijos - Solo para apoderados */}
-              {user.tipoUsuario === 'apoderado' && (
-                <Card className="panel-card">
-                  <CardHeader className="panel-card-header">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="flex items-center space-x-2">
-                        <Users className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                        <span>Mis hijos registrados</span>
-                      </CardTitle>
+              {/* Gestión de hijos - Para apoderados y funcionarios */}
+              <Card className="panel-card">
+                <CardHeader className="panel-card-header">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center space-x-2">
+                      <Users className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                      <span>
+                        {user.tipoUsuario === 'apoderado' 
+                          ? 'Mis hijos registrados' 
+                          : 'Mis hijos registrados (opcional)'
+                        }
+                      </span>
+                      <Edit3 className="w-4 h-4 text-slate-400" />
+                    </CardTitle>
+                    <Button
+                      onClick={addChild}
+                      size="sm"
+                      className="bg-blue-600 hover:bg-blue-700 text-white transition-colors duration-200"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Agregar hijo
+                    </Button>
+                  </div>
+                  {user.tipoUsuario === 'funcionario' && (
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">
+                      Como funcionario, puedes agregar información de tus hijos para gestionar también sus menús además del tuyo.
+                    </p>
+                  )}
+                </CardHeader>
+                <CardContent className="panel-card-content">
+                  {children.length === 0 ? (
+                    <div className="text-center py-12">
+                      <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Users className="w-8 h-8 text-slate-400" />
+                      </div>
+                      <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100 mb-2">
+                        {user.tipoUsuario === 'apoderado' 
+                          ? 'No tienes hijos registrados' 
+                          : 'No tienes hijos registrados'
+                        }
+                      </h3>
+                      <p className="text-slate-500 dark:text-slate-400 mb-4">
+                        {user.tipoUsuario === 'apoderado'
+                          ? 'Agrega la información de tus hijos para gestionar sus pedidos'
+                          : 'Agrega la información de tus hijos para gestionar sus pedidos además del tuyo'
+                        }
+                      </p>
                       <Button
                         onClick={addChild}
-                        size="sm"
-                        className="btn-panel-primary"
+                        className="bg-blue-600 hover:bg-blue-700 text-white transition-colors duration-200"
                       >
                         <Plus className="w-4 h-4 mr-2" />
-                        Agregar hijo
+                        Agregar primer hijo
                       </Button>
                     </div>
-                  </CardHeader>
-                  <CardContent className="panel-card-content">
-                    {children.length === 0 ? (
-                      <div className="text-center py-8">
-                        <Users className="w-12 h-12 text-slate-400 mx-auto mb-3" />
-                        <p className="text-slate-500 dark:text-slate-400">
-                          No tienes hijos registrados
-                        </p>
-                        <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
-                          Agrega la información de tus hijos para gestionar sus pedidos
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {children.map((child, index) => (
-                          <motion.div
-                            key={child.id}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -20 }}
-                            className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 bg-slate-50 dark:bg-slate-800/50"
-                          >
-                            <div className="flex items-center justify-between mb-3">
-                              <div className="flex items-center space-x-2">
-                                <h4 className="font-medium text-slate-800 dark:text-slate-200">
+                  ) : (
+                    <div className="space-y-6">
+                      {children.map((child, index) => (
+                        <motion.div
+                          key={child.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -20 }}
+                          className="relative border border-slate-200 dark:border-slate-700 rounded-xl p-6 bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-800/50 shadow-sm hover:shadow-md transition-all duration-200"
+                        >
+                          {/* Header del hijo */}
+                          <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+                                <GraduationCap className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                              </div>
+                              <div>
+                                <h4 className="text-lg font-semibold text-slate-800 dark:text-slate-200">
                                   Hijo {index + 1}
                                 </h4>
                                 {child.level && (
-                                  <Badge variant="outline" className="text-xs">
-                                    <GraduationCap className="w-3 h-3 mr-1" />
+                                  <Badge variant="outline" className="text-xs mt-1">
                                     {getSchoolLevelLabel(child.level)}
                                   </Badge>
                                 )}
                               </div>
-                              <Button
-                                onClick={() => removeChild(child.id)}
-                                variant="ghost"
-                                size="sm"
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
                             </div>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                              <div className="md:col-span-2">
-                                <label className="label-educational">
-                                  Nombre completo *
-                                </label>
-                                <Input
-                                  value={child.name}
-                                  onChange={(e) => updateChild(child.id, 'name', e.target.value)}
-                                  placeholder="Nombre del hijo/a"
-                                  className={errors[`child_${child.id}_name`] ? 'border-red-500' : ''}
-                                />
-                                {errors[`child_${child.id}_name`] && (
-                                  <p className="text-red-500 text-sm mt-1">
-                                    {errors[`child_${child.id}_name`]}
-                                  </p>
-                                )}
-                              </div>
+                            <Button
+                              onClick={() => removeChild(child.id)}
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors duration-200"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                          
+                          {/* Formulario del hijo */}
+                          <div className="space-y-4">
+                            {/* Nombre completo */}
+                            <div>
+                              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                Nombre completo *
+                              </label>
+                              <Input
+                                value={child.name}
+                                onChange={(e) => updateChild(child.id, 'name', e.target.value)}
+                                placeholder="Nombre completo del hijo/a"
+                                className={`transition-all duration-200 ${errors[`child_${child.id}_name`] ? 'border-red-500 focus:border-red-500' : 'focus:border-blue-500'}`}
+                              />
+                              {errors[`child_${child.id}_name`] && (
+                                <p className="text-red-500 text-sm mt-1">
+                                  {errors[`child_${child.id}_name`]}
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {/* Edad */}
                               <div>
-                                <label className="label-educational">
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                                   Edad *
                                 </label>
                                 <Input
                                   type="number"
-                                  min="1"
+                                  min="3"
                                   max="18"
                                   value={child.edad || ''}
                                   onChange={(e) => updateChild(child.id, 'edad', parseInt(e.target.value) || 0)}
                                   placeholder="Edad"
-                                  className={errors[`child_${child.id}_edad`] ? 'border-red-500' : ''}
+                                  className={`transition-all duration-200 ${errors[`child_${child.id}_edad`] ? 'border-red-500 focus:border-red-500' : 'focus:border-blue-500'}`}
                                 />
                                 {errors[`child_${child.id}_edad`] && (
                                   <p className="text-red-500 text-sm mt-1">
@@ -447,43 +485,80 @@ export default function PerfilPage() {
                                   </p>
                                 )}
                               </div>
+
+                              {/* RUT */}
                               <div>
-                                <label className="label-educational">
-                                  Curso *
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                  RUT (opcional)
                                 </label>
                                 <Input
-                                  value={child.curso}
-                                  onChange={(e) => updateChild(child.id, 'curso', e.target.value)}
-                                  placeholder="Ej: 3° Básico A"
-                                  className={errors[`child_${child.id}_curso`] ? 'border-red-500' : ''}
+                                  value={child.rut || ''}
+                                  onChange={(e) => updateChild(child.id, 'rut', e.target.value)}
+                                  placeholder="12345678-9"
+                                  className={`transition-all duration-200 ${errors[`child_${child.id}_rut`] ? 'border-red-500 focus:border-red-500' : 'focus:border-blue-500'}`}
                                 />
-                                {errors[`child_${child.id}_curso`] && (
+                                {errors[`child_${child.id}_rut`] && (
                                   <p className="text-red-500 text-sm mt-1">
-                                    {errors[`child_${child.id}_curso`]}
+                                    {errors[`child_${child.id}_rut`]}
                                   </p>
                                 )}
                               </div>
-                              <div>
-                                <label className="label-educational">
-                                  Nivel
-                                </label>
-                                <select
-                                  value={child.level}
-                                  onChange={(e) => updateChild(child.id, 'level', e.target.value as 'basico' | 'medio')}
-                                  className="select-educational"
-                                >
-                                  <option value="basico">Básico</option>
-                                  <option value="medio">Medio</option>
-                                </select>
-                              </div>
                             </div>
-                          </motion.div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
+
+                            {/* Nivel educativo */}
+                            <div>
+                                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                Nivel educativo *
+                              </label>
+                              <SchoolLevelSelector
+                                value={child.level}
+                                onValueChange={(value) => updateChild(child.id, 'level', value)}
+                                placeholder="Selecciona un nivel educativo"
+                                className={`transition-all duration-200 ${errors[`child_${child.id}_level`] ? 'border-red-500 focus:border-red-500' : 'focus:border-blue-500'}`}
+                              />
+                              {errors[`child_${child.id}_level`] && (
+                                <p className="text-red-500 text-sm mt-1">
+                                  {errors[`child_${child.id}_level`]}
+                                </p>
+                              )}
+                            </div>
+                            
+                            {/* Curso - COMPLETAMENTE LIBRE */}
+                            <div>
+                              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                Curso *
+                              </label>
+                              <Input
+                                value={child.curso}
+                                onChange={(e) => updateChild(child.id, 'curso', e.target.value)}
+                                placeholder="Ej: 3° Básico A, 1° Medio B, Kinder A, etc."
+                                className={`transition-all duration-200 ${errors[`child_${child.id}_curso`] ? 'border-red-500 focus:border-red-500' : 'focus:border-blue-500'}`}
+                              />
+                              {errors[`child_${child.id}_curso`] && (
+                                <p className="text-red-500 text-sm mt-1">
+                                  {errors[`child_${child.id}_curso`]}
+                                </p>
+                              )}
+                              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1"></p>                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                      
+                      {/* Botón para agregar más hijos */}
+                      <motion.button
+                        type="button"
+                        onClick={addChild}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="w-full p-4 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl text-slate-600 dark:text-slate-400 hover:border-blue-400 dark:hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-all duration-300 text-sm font-medium flex items-center justify-center space-x-2"
+                      >
+                        <Plus className="w-5 h-5" />
+                        <span>Agregar otro hijo</span>
+                      </motion.button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </div>
 
             {/* Sidebar */}
@@ -497,21 +572,35 @@ export default function PerfilPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="panel-card-content">
-                  <div className="space-y-3">
-                    <div className="flex items-center space-x-2">
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-3">
                       {emailVerified ? (
                         <>
-                          <CheckCircle className="w-5 h-5 text-emerald-600" />
-                          <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
-                            Correo verificado
-                          </span>
+                          <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center">
+                            <CheckCircle className="w-5 h-5 text-emerald-600" />
+                          </div>
+                          <div>
+                            <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                              Correo verificado
+                            </span>
+                            <p className="text-xs text-emerald-700 dark:text-emerald-300">
+                              Tu email está confirmado
+                            </p>
+                          </div>
                         </>
                       ) : (
                         <>
-                          <AlertTriangle className="w-5 h-5 text-amber-600" />
-                          <span className="text-sm font-medium text-amber-600 dark:text-amber-400">
-                            Correo sin verificar
-                          </span>
+                          <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center">
+                            <AlertTriangle className="w-5 h-5 text-amber-600" />
+                          </div>
+                          <div>
+                            <span className="text-sm font-medium text-amber-600 dark:text-amber-400">
+                              Correo sin verificar
+                            </span>
+                            <p className="text-xs text-amber-700 dark:text-amber-300">
+                              Verifica tu email
+                            </p>
+                          </div>
                         </>
                       )}
                     </div>
@@ -524,7 +613,7 @@ export default function PerfilPage() {
                     </p>
 
                     {!emailVerified && (
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         <Button
                           onClick={handleResendVerification}
                           variant="outline"
@@ -551,7 +640,7 @@ export default function PerfilPage() {
                         </Button>
                         
                         {resendCooldownTime > 0 && (
-                          <div className="flex items-start space-x-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-md">
+                          <div className="flex items-start space-x-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                             <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
                             <p className="text-xs text-blue-700 dark:text-blue-300">
                               Para evitar spam, hay un límite en la frecuencia de envío de correos de verificación.
@@ -573,11 +662,15 @@ export default function PerfilPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="panel-card-content">
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     <Button
                       onClick={handleSaveChanges}
                       disabled={!hasChanges || isSaving}
-                      className="w-full btn-panel-primary"
+                      className={`w-full transition-all duration-200 ${
+                        hasChanges 
+                          ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl' 
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500'
+                      }`}
                     >
                       {isSaving ? (
                         <>
@@ -592,17 +685,23 @@ export default function PerfilPage() {
                       )}
                     </Button>
                     
-                    {hasChanges && (
-                      <p className="text-sm text-amber-600 dark:text-amber-400 text-center">
-                        Tienes cambios sin guardar
-                      </p>
-                    )}
-                    
-                    {!hasChanges && (
-                      <p className="text-sm text-slate-500 dark:text-slate-400 text-center">
-                        No hay cambios para guardar
-                      </p>
-                    )}
+                    <div className="text-center">
+                      {hasChanges ? (
+                        <div className="flex items-center justify-center space-x-2">
+                          <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>
+                          <p className="text-sm text-amber-600 dark:text-amber-400">
+                            Tienes cambios sin guardar
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center space-x-2">
+                          <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                          <p className="text-sm text-slate-500 dark:text-slate-400">
+                            Todo guardado
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -615,29 +714,36 @@ export default function PerfilPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="panel-card-content">
-                  <div className="space-y-3 text-sm text-slate-600 dark:text-slate-400">
-                    <div className="flex items-start space-x-2">
-                      <Shield className="w-4 h-4 mt-0.5 text-blue-600" />
+                  <div className="space-y-4 text-sm text-slate-600 dark:text-slate-400">
+                    <div className="flex items-start space-x-3">
+                      <Shield className="w-4 h-4 mt-0.5 text-blue-600 flex-shrink-0" />
                       <p>
                         Tus datos están protegidos y solo se usan para la gestión del casino escolar.
                       </p>
                     </div>
-                    <div className="flex items-start space-x-2">
-                      <Mail className="w-4 h-4 mt-0.5 text-blue-600" />
+                    <div className="flex items-start space-x-3">
+                      <Mail className="w-4 h-4 mt-0.5 text-blue-600 flex-shrink-0" />
                       <p>
                         Mantén tu correo actualizado para recibir notificaciones importantes.
                       </p>
                     </div>
-                    {user.tipoUsuario === 'apoderado' && (
-                      <div className="flex items-start space-x-2">
-                        <Users className="w-4 h-4 mt-0.5 text-blue-600" />
-                        <p>
-                          La información de tus hijos es necesaria para gestionar sus pedidos de almuerzo.
-                        </p>
-                      </div>
-                    )}
-                    <div className="flex items-start space-x-2">
-                      <Clock className="w-4 h-4 mt-0.5 text-blue-600" />
+                    <div className="flex items-start space-x-3">
+                      <Users className="w-4 h-4 mt-0.5 text-blue-600 flex-shrink-0" />
+                      <p>
+                        {user.tipoUsuario === 'apoderado'
+                          ? 'La información de tus hijos es necesaria para gestionar sus pedidos de almuerzo.'
+                          : 'Puedes agregar información de tus hijos para gestionar sus pedidos además del tuyo.'
+                        }
+                      </p>
+                    </div>
+                    <div className="flex items-start space-x-3">
+                      <GraduationCap className="w-4 h-4 mt-0.5 text-blue-600 flex-shrink-0" />
+                      <p>
+                        El campo &quot;Curso&quot; es completamente libre. Puedes escribir cualquier curso, grado o nivel que necesites.
+                      </p>
+                    </div>
+                    <div className="flex items-start space-x-3">
+                      <Clock className="w-4 h-4 mt-0.5 text-blue-600 flex-shrink-0" />
                       <p>
                         Los correos de verificación tienen un límite de frecuencia para prevenir spam.
                       </p>
@@ -652,3 +758,4 @@ export default function PerfilPage() {
     </div>
   )
 }
+

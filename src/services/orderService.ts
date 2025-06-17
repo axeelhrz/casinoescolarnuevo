@@ -393,7 +393,7 @@ export class OrderService {
   }
 
   /**
-   * Valida un pedido antes de proceder al pago
+   * Valida un pedido antes de proceder al pago - ACTUALIZADO: Sin restricciones de almuerzo
    */
   static validateOrderByChild(
     selections: OrderSelectionByChild[], 
@@ -410,10 +410,10 @@ export class OrderService {
       errors.push('El tiempo para realizar pedidos ha expirado')
     }
     
-    // Verificar que haya al menos una selección con almuerzo
-    const selectionsWithAlmuerzo = selections.filter(s => s.almuerzo)
-    if (selectionsWithAlmuerzo.length === 0) {
-      errors.push('Debe seleccionar al menos un almuerzo para proceder')
+    // Verificar que haya al menos una selección (almuerzo O colación)
+    const selectionsWithItems = selections.filter(s => s.almuerzo || s.colacion)
+    if (selectionsWithItems.length === 0) {
+      errors.push('Debe seleccionar al menos un almuerzo o colación para proceder')
     }
     
     if (user.tipoUsuario === 'apoderado') {
@@ -443,20 +443,29 @@ export class OrderService {
     
     // Advertencias informativas (no bloquean el pago)
     const weekDaysLaboral = weekDays.filter((_, index) => index < 5) // Solo lunes a viernes
-    const daysWithoutAlmuerzo = weekDaysLaboral.filter(day => {
-      const daySelections = selections.filter(s => s.date === day && s.almuerzo)
-      return daySelections.length === 0
-    })
+    const selectionsWithAlmuerzo = selections.filter(s => s.almuerzo)
+    const selectionsWithColacion = selections.filter(s => s.colacion)
     
-    if (daysWithoutAlmuerzo.length > 0 && selectionsWithAlmuerzo.length > 0) {
-      warnings.push(`Tienes ${daysWithoutAlmuerzo.length} día(s) sin almuerzo seleccionado. Puedes agregar más días después del pago.`)
-      missingDays.push(...daysWithoutAlmuerzo)
+    // Advertencia sobre días sin almuerzo (solo si hay algunos almuerzos seleccionados)
+    if (selectionsWithAlmuerzo.length > 0) {
+      const daysWithoutAlmuerzo = weekDaysLaboral.filter(day => {
+        const daySelections = selections.filter(s => s.date === day && s.almuerzo)
+        return daySelections.length === 0
+      })
+      
+      if (daysWithoutAlmuerzo.length > 0) {
+        warnings.push(`Tienes ${daysWithoutAlmuerzo.length} día(s) sin almuerzo seleccionado. Puedes agregar más días después del pago.`)
+        missingDays.push(...daysWithoutAlmuerzo)
+      }
     }
     
-    // Advertencia sobre colaciones
-    const selectionsWithoutColacion = selections.filter(s => s.almuerzo && !s.colacion)
-    if (selectionsWithoutColacion.length > 0) {
-      warnings.push(`${selectionsWithoutColacion.length} selección(es) sin colación. Las colaciones son opcionales.`)
+    // Información sobre el tipo de pedido
+    if (selectionsWithAlmuerzo.length === 0 && selectionsWithColacion.length > 0) {
+      warnings.push(`Has seleccionado solo colaciones (${selectionsWithColacion.length}). Puedes agregar almuerzos después del pago si lo deseas.`)
+    }
+    
+    if (selectionsWithAlmuerzo.length > 0 && selectionsWithColacion.length === 0) {
+      warnings.push(`Has seleccionado solo almuerzos (${selectionsWithAlmuerzo.length}). Las colaciones son opcionales.`)
     }
     
     return {
@@ -464,12 +473,12 @@ export class OrderService {
       errors,
       warnings,
       missingDays,
-      canProceedToPayment: errors.length === 0 && isOrderingAllowed && selectionsWithAlmuerzo.length > 0
+      canProceedToPayment: errors.length === 0 && isOrderingAllowed && selectionsWithItems.length > 0
     }
   }
 
   /**
-   * Método de compatibilidad con la estructura anterior
+   * Método de compatibilidad con la estructura anterior - ACTUALIZADO: Sin restricciones de almuerzo
    */
   static validateOrder(
     selections: OrderSelectionByChild[], 
@@ -484,27 +493,35 @@ export class OrderService {
       errors.push('El tiempo para realizar pedidos ha expirado')
     }
     
-    // Solo verificar que haya al menos un almuerzo seleccionado
-    const selectionsWithAlmuerzo = selections.filter(s => s.almuerzo)
-    if (selectionsWithAlmuerzo.length === 0) {
-      errors.push('Debe seleccionar al menos un almuerzo para proceder')
+    // Verificar que haya al menos una selección (almuerzo O colación)
+    const selectionsWithItems = selections.filter(s => s.almuerzo || s.colacion)
+    if (selectionsWithItems.length === 0) {
+      errors.push('Debe seleccionar al menos un almuerzo o colación para proceder')
     }
     
     // Advertencias informativas
     const weekDaysLaboral = weekDays.filter((_, index) => index < 5) // Solo lunes a viernes
-    const daysWithoutAlmuerzo = weekDaysLaboral.filter(day => {
-      const selection = selections.find(s => s.date === day && s.almuerzo)
-      return !selection
-    })
+    const selectionsWithAlmuerzo = selections.filter(s => s.almuerzo)
+    const selectionsWithColacion = selections.filter(s => s.colacion)
     
-    if (daysWithoutAlmuerzo.length > 0 && selectionsWithAlmuerzo.length > 0) {
-      warnings.push(`${daysWithoutAlmuerzo.length} día(s) sin almuerzo seleccionado`)
-      missingDays.push(...daysWithoutAlmuerzo)
+    // Advertencia sobre días sin almuerzo (solo si hay algunos almuerzos seleccionados)
+    if (selectionsWithAlmuerzo.length > 0) {
+      const daysWithoutAlmuerzo = weekDaysLaboral.filter(day => {
+        const selection = selections.find(s => s.date === day && s.almuerzo)
+        return !selection
+      })
+      
+      if (daysWithoutAlmuerzo.length > 0) {
+        warnings.push(`${daysWithoutAlmuerzo.length} día(s) sin almuerzo seleccionado`)
+        missingDays.push(...daysWithoutAlmuerzo)
+      }
     }
     
-    const selectionsWithoutColacion = selections.filter(s => s.almuerzo && !s.colacion)
-    if (selectionsWithoutColacion.length > 0) {
-      warnings.push(`${selectionsWithoutColacion.length} día(s) sin colación seleccionada`)
+    // Información sobre colaciones
+    if (selectionsWithColacion.length > 0 && selectionsWithAlmuerzo.length === 0) {
+      warnings.push(`Has seleccionado solo colaciones (${selectionsWithColacion.length})`)
+    } else if (selectionsWithAlmuerzo.length > 0 && selectionsWithColacion.length === 0) {
+      warnings.push(`${selectionsWithAlmuerzo.length} día(s) sin colación seleccionada`)
     }
     
     return {
@@ -512,7 +529,7 @@ export class OrderService {
       errors,
       warnings,
       missingDays,
-      canProceedToPayment: errors.length === 0 && isOrderingAllowed && selectionsWithAlmuerzo.length > 0
+      canProceedToPayment: errors.length === 0 && isOrderingAllowed && selectionsWithItems.length > 0
     }
   }
 
