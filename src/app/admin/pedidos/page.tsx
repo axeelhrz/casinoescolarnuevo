@@ -470,6 +470,7 @@ export default function AdminPedidosPage() {
                       onViewDetail={handleViewDetail}
                       onUpdateStatus={handleStatusUpdate}
                       onDeleteOrder={handleDeleteOrder}
+                      filters={filters}
                     />
                   </motion.div>
 

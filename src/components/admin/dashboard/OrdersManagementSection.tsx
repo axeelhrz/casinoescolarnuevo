@@ -26,9 +26,66 @@ import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Separator } from '@/components/ui/separator'
+import { ExportToExcelButton } from '@/components/admin/pedidos/ExportToExcelButton'
+import { AdminOrderView } from '@/types/adminOrder'
 import { useAdminOrdersSimple } from '@/hooks/useAdminOrdersSimple'
 import { format, parseISO, startOfWeek } from 'date-fns'
 import { es } from 'date-fns/locale'
+
+// Define the OrderHistoryItem type locally since it's not exported from the hook
+interface OrderHistoryItem {
+  id?: string
+  userId: string
+  tipoUsuario: 'apoderado' | 'funcionario'
+  weekStart: string
+  resumenPedido: Array<{
+    date: string
+    dia: string
+    fecha: string
+    hijo: { id: string; name: string; curso: string; rut?: string; active: boolean } | null
+    almuerzo?: {
+      id: string
+      code: string
+      name: string
+      description: string
+      type: 'almuerzo'
+      price: number
+      available: boolean
+      date: string
+      dia: string
+      active: boolean
+    }
+    colacion?: {
+      id: string
+      code: string
+      name: string
+      description: string
+      type: 'colacion'
+      price: number
+      available: boolean
+      date: string
+      dia: string
+      active: boolean
+    }
+  }>
+  total: number
+  status: 'pendiente' | 'pagado' | 'cancelado' | 'procesando_pago'
+  createdAt: Date
+  paidAt?: Date
+  paymentId?: string
+  weekLabel: string
+  formattedDate: string
+  itemsCount: number
+  hasColaciones: boolean
+  user?: {
+    id: string
+    firstName: string
+    lastName: string
+    email: string
+    userType: string
+  }
+  daysSincePending?: number
+}
 
 interface OrderFilters {
   status: 'all' | 'pendiente' | 'pagado' | 'cancelado'
@@ -96,6 +153,104 @@ export function OrdersManagementSection() {
   // Función para actualizar filtros
   const updateFilters = (newFilters: Partial<OrderFilters>) => {
     setFilters(prev => ({ ...prev, ...newFilters }))
+  }
+
+  // Convertir pedidos al formato AdminOrderView para la exportación
+  const convertToAdminOrderView = (orders: OrderHistoryItem[]): AdminOrderView[] => {
+    return orders.map(order => {
+      // Determinar el userType correcto
+      const getUserType = (tipoUsuario: string | undefined): 'funcionario' | 'estudiante' => {
+        if (tipoUsuario === 'funcionario') return 'funcionario'
+        return 'estudiante' // apoderado se mapea a estudiante para el admin
+      }
+
+      // Procesar itemsDetail desde resumenPedido
+      const itemsDetail = order.resumenPedido?.map((selection) => {
+        try {
+          return {
+            date: selection.date,
+            dayName: format(parseISO(selection.date), 'EEEE', { locale: es }),
+            almuerzo: selection.almuerzo ? {
+              code: selection.almuerzo.code || 'ALM',
+              name: selection.almuerzo.name || selection.almuerzo.description || 'Almuerzo',
+              price: Number(selection.almuerzo.price) || 0
+            } : undefined,
+            colacion: selection.colacion ? {
+              code: selection.colacion.code || 'COL',
+              name: selection.colacion.name || selection.colacion.description || 'Colación',
+              price: Number(selection.colacion.price) || 0
+            } : undefined
+          }
+        } catch (error) {
+          console.error('Error processing selection for export:', selection, error)
+          return {
+            date: selection.date || '',
+            dayName: 'Fecha inválida',
+            almuerzo: undefined,
+            colacion: undefined
+          }
+        }
+      }) || []
+
+      // Calcular totales
+      const totalAlmuerzos = order.resumenPedido?.filter((s) => s.almuerzo).length || 0
+      const totalColaciones = order.resumenPedido?.filter((s) => s.colacion).length || 0
+      const almuerzosPrice = order.resumenPedido?.reduce((sum, s) => 
+        sum + (Number(s.almuerzo?.price) || 0), 0) || 0
+      const colacionesPrice = order.resumenPedido?.reduce((sum, s) => 
+        sum + (Number(s.colacion?.price) || 0), 0) || 0
+
+      // Map local status to AdminOrderView status
+      const mapStatus = (status: string): 'pending' | 'draft' | 'cancelled' | 'paid' => {
+        switch (status) {
+          case 'pendiente':
+            return 'pending'
+          case 'pagado':
+            return 'paid'
+          case 'cancelado':
+            return 'cancelled'
+          // You can map 'procesando_pago' to 'pending' or another appropriate value
+          case 'procesando_pago':
+            return 'pending'
+          default:
+            return 'pending'
+        }
+      }
+
+      const adminOrder: AdminOrderView = {
+        id: order.id,
+        userId: order.userId,
+        weekStart: order.weekStart,
+        selections: order.resumenPedido || [],
+        total: Number(order.total) || 0,
+        status: mapStatus(order.status),
+        createdAt: order.createdAt,
+        paidAt: order.paidAt,
+        cancelledAt: order.paidAt, // Note: using paidAt as fallback since cancelledAt might not exist
+        daysSincePending: order.daysSincePending,
+        paymentId: order.paymentId,
+        user: {
+          id: order.user?.id || order.userId,
+          firstName: order.user?.firstName || '',
+          lastName: order.user?.lastName || '',
+          email: order.user?.email || '',
+          userType: getUserType(order.user?.userType || order.tipoUsuario)
+        },
+        dayName: format(order.createdAt, 'EEEE', { locale: es }),
+        formattedDate: format(order.createdAt, 'dd/MM/yyyy HH:mm'),
+        itemsCount: totalAlmuerzos + totalColaciones,
+        hasColaciones: totalColaciones > 0,
+        itemsSummary: {
+          totalAlmuerzos,
+          totalColaciones,
+          almuerzosPrice,
+          colacionesPrice,
+          itemsDetail
+        }
+      }
+
+      return adminOrder
+    })
   }
 
   // Función para obtener el color del estado
@@ -301,6 +456,18 @@ export function OrdersManagementSection() {
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Actualizar
               </Button>
+
+              {/* Botón de exportación a Excel */}
+              <ExportToExcelButton 
+                orders={convertToAdminOrderView(filteredOrders as OrderHistoryItem[])} 
+                isLoading={isLoading}
+                filters={{
+                  weekStart: filters.weekStart,
+                  status: filters.status === 'all' ? undefined : filters.status,
+                  userType: filters.userType === 'all' ? undefined : filters.userType,
+                  searchTerm: filters.searchTerm
+                }}
+              />
             </div>
           </div>
         </CardHeader>

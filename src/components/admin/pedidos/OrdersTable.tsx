@@ -42,6 +42,7 @@ import {
 } from '@/components/ui/tooltip'
 import { AdminOrderView } from '@/types/adminOrder'
 import { formatAdminCurrency, formatAdminDate, formatAdminTime } from '@/lib/adminUtils'
+import { ExportToExcelButton } from './ExportToExcelButton'
 import { differenceInDays, format } from 'date-fns'
 import { es } from 'date-fns/locale'
 
@@ -51,6 +52,12 @@ interface OrdersTableProps {
   onViewDetail: (orderId: string) => void
   onUpdateStatus: (orderId: string, status: 'pending' | 'paid' | 'cancelled') => Promise<void>
   onDeleteOrder: (orderId: string) => Promise<void>
+  filters?: {
+    weekStart?: string
+    status?: string
+    userType?: string
+    searchTerm?: string
+  }
 }
 
 export function OrdersTable({ 
@@ -58,7 +65,8 @@ export function OrdersTable({
   isLoading, 
   onViewDetail, 
   onUpdateStatus,
-  onDeleteOrder
+  onDeleteOrder,
+  filters
 }: OrdersTableProps) {
   const [updatingOrders, setUpdatingOrders] = useState<Set<string>>(new Set())
   const [deletingOrders, setDeletingOrders] = useState<Set<string>>(new Set())
@@ -280,7 +288,14 @@ export function OrdersTable({
     return (
       <Card className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 shadow-soft">
         <CardHeader>
-          <CardTitle>Pedidos</CardTitle>
+          <CardTitle className="flex items-center justify-between">
+            <span>Pedidos</span>
+            <ExportToExcelButton 
+              orders={orders} 
+              isLoading={isLoading}
+              filters={filters}
+            />
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-center py-12">
@@ -306,17 +321,24 @@ export function OrdersTable({
       <Card className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 shadow-soft">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span>Tabla de Pedidos</span>
-            <div className="flex items-center space-x-2">
-              <Badge variant="secondary" className="bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300">
-                {orders.length} pedidos
-              </Badge>
-              {orders.filter(o => o.status === 'pending' && getDaysSincePending(o) > 3).length > 0 && (
-                <Badge variant="destructive" className="animate-pulse">
-                  {orders.filter(o => o.status === 'pending' && getDaysSincePending(o) > 3).length} críticos
+            <div className="flex items-center space-x-4">
+              <span>Tabla de Pedidos</span>
+              <div className="flex items-center space-x-2">
+                <Badge variant="secondary" className="bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300">
+                  {orders.length} pedidos
                 </Badge>
-              )}
+                {orders.filter(o => o.status === 'pending' && getDaysSincePending(o) > 3).length > 0 && (
+                  <Badge variant="destructive" className="animate-pulse">
+                    {orders.filter(o => o.status === 'pending' && getDaysSincePending(o) > 3).length} críticos
+                  </Badge>
+                )}
+              </div>
             </div>
+            <ExportToExcelButton 
+              orders={orders} 
+              isLoading={isLoading}
+              filters={filters}
+            />
           </CardTitle>
         </CardHeader>
         <CardContent>

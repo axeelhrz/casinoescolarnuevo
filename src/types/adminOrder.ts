@@ -8,6 +8,7 @@ export interface AdminOrderView extends OrderState {
     email: string
     userType: 'estudiante' | 'funcionario'
   }
+  status: 'draft' | 'pending' | 'cancelled' | 'paid'
   dayName: string
   formattedDate: string
   itemsCount: number
