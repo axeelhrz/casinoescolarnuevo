@@ -12,8 +12,8 @@ import {
   AlertTriangle,
   Timer,
   Package,
-  ShoppingBag,
-  Coffee
+  Coffee,
+  Utensils
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -138,60 +138,97 @@ export function OrdersTable({
     }
   }
 
-  const renderItemsSummary = (order: AdminOrderView) => {
+  // Función para formatear moneda
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('es-CL', {
+      style: 'currency',
+      currency: 'CLP'
+    }).format(amount)
+  }
+
+  const renderProductsDetail = (order: AdminOrderView) => {
     const { itemsSummary } = order
     
     return (
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className="flex items-center space-x-2 cursor-help">
-              <div className="flex items-center space-x-1">
-                <Package className="w-4 h-4 text-slate-500" />
-                <span className="font-medium text-slate-900 dark:text-white">
-                  {order.itemsCount}
-                </span>
-              </div>
-              
-              <div className="flex items-center space-x-1">
-                {itemsSummary.totalAlmuerzos > 0 && (
-                  <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
-                    <ShoppingBag className="w-3 h-3 mr-1" />
-                    {itemsSummary.totalAlmuerzos}A
-                  </Badge>
-                )}
+            <div className="space-y-2 cursor-help">
+              {/* Resumen básico */}
+              <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-1">
+                  <Package className="w-4 h-4 text-slate-500" />
+                  <span className="font-medium text-slate-900 dark:text-white">
+                    {order.itemsCount} items
+                  </span>
+                </div>
                 
-                {itemsSummary.totalColaciones > 0 && (
-                  <Badge variant="secondary" className="text-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
-                    <Coffee className="w-3 h-3 mr-1" />
-                    {itemsSummary.totalColaciones}C
-                  </Badge>
+                <div className="flex items-center space-x-1">
+                  {itemsSummary.totalAlmuerzos > 0 && (
+                    <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                      <Utensils className="w-3 h-3 mr-1" />
+                      {itemsSummary.totalAlmuerzos}A
+                    </Badge>
+                  )}
+                  
+                  {itemsSummary.totalColaciones > 0 && (
+                    <Badge variant="secondary" className="text-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                      <Coffee className="w-3 h-3 mr-1" />
+                      {itemsSummary.totalColaciones}C
+                    </Badge>
+                  )}
+                </div>
+              </div>
+
+              {/* Detalle por día (máximo 3 días visibles) */}
+              <div className="space-y-1">
+                {itemsSummary.itemsDetail.slice(0, 3).map((detail, idx) => (
+                  <div key={idx} className="text-xs text-slate-600 dark:text-slate-400">
+                    <span className="font-medium capitalize">{detail.dayName}:</span>
+                    <span className="ml-1">
+                      {detail.almuerzo && (
+                        <span className="text-blue-600">{detail.almuerzo.code}</span>
+                      )}
+                      {detail.almuerzo && detail.colacion && <span className="mx-1">+</span>}
+                      {detail.colacion && (
+                        <span className="text-emerald-600">{detail.colacion.code}</span>
+                      )}
+                    </span>
+                  </div>
+                ))}
+                {itemsSummary.itemsDetail.length > 3 && (
+                  <div className="text-xs text-slate-500 dark:text-slate-400">
+                    +{itemsSummary.itemsDetail.length - 3} días más...
+                  </div>
                 )}
               </div>
             </div>
           </TooltipTrigger>
           <TooltipContent side="top" className="max-w-sm">
-            <div className="space-y-2">
-              <div className="font-semibold text-sm">Resumen del pedido:</div>
+            <div className="space-y-3">
+              <div className="font-semibold text-sm">Detalle del pedido:</div>
+              
+              {/* Resumen financiero */}
               <div className="space-y-1 text-xs">
                 <div className="flex justify-between">
                   <span>Almuerzos:</span>
-                  <span>{itemsSummary.totalAlmuerzos} ({formatAdminCurrency(itemsSummary.almuerzosPrice)})</span>
+                  <span>{itemsSummary.totalAlmuerzos} ({formatCurrency(itemsSummary.almuerzosPrice)})</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Colaciones:</span>
-                  <span>{itemsSummary.totalColaciones} ({formatAdminCurrency(itemsSummary.colacionesPrice)})</span>
+                  <span>{itemsSummary.totalColaciones} ({formatCurrency(itemsSummary.colacionesPrice)})</span>
                 </div>
                 <hr className="my-1" />
                 <div className="flex justify-between font-semibold">
                   <span>Total:</span>
-                  <span>{formatAdminCurrency(order.total)}</span>
+                  <span>{formatCurrency(order.total)}</span>
                 </div>
               </div>
               
+              {/* Detalle completo por día */}
               {itemsSummary.itemsDetail.length > 0 && (
                 <div className="mt-2 pt-2 border-t">
-                  <div className="font-semibold text-xs mb-1">Detalles por día:</div>
+                  <div className="font-semibold text-xs mb-1">Productos por día:</div>
                   <div className="space-y-1 text-xs max-h-32 overflow-y-auto">
                     {itemsSummary.itemsDetail.map((detail, idx) => (
                       <div key={idx} className="text-xs">
@@ -199,14 +236,14 @@ export function OrdersTable({
                         <div className="ml-2 space-y-0.5">
                           {detail.almuerzo && (
                             <div className="flex justify-between">
-                              <span className="text-blue-600">• {detail.almuerzo.code}</span>
-                              <span>{formatAdminCurrency(detail.almuerzo.price)}</span>
+                              <span className="text-blue-600">• {detail.almuerzo.code} - {detail.almuerzo.name}</span>
+                              <span>{formatCurrency(detail.almuerzo.price)}</span>
                             </div>
                           )}
                           {detail.colacion && (
                             <div className="flex justify-between">
-                              <span className="text-emerald-600">• {detail.colacion.code}</span>
-                              <span>{formatAdminCurrency(detail.colacion.price)}</span>
+                              <span className="text-emerald-600">• {detail.colacion.code} - {detail.colacion.name}</span>
+                              <span>{formatCurrency(detail.colacion.price)}</span>
                             </div>
                           )}
                         </div>
@@ -350,7 +387,7 @@ export function OrdersTable({
                       </TableCell>
                       
                       <TableCell>
-                        {renderItemsSummary(order)}
+                        {renderProductsDetail(order)}
                       </TableCell>
                       
                       <TableCell>

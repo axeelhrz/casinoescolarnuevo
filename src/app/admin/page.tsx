@@ -3,8 +3,7 @@ import { motion } from 'framer-motion'
 import { AdminLayout } from '@/components/admin/AdminLayout'
 import { AdminHeader } from '@/components/admin/AdminHeader'
 import { StatsCards } from '@/components/admin/StatsCards'
-import { QuickActions } from '@/components/admin/QuickActions'
-import { SystemAlerts } from '@/components/admin/SystemAlerts'
+import { OrdersManagementSection } from '@/components/admin/dashboard/OrdersManagementSection'
 import { useAdminAuth } from '@/hooks/useAdminAuth'
 import { useAdminDashboard } from '@/hooks/useAdminDashboard'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -54,13 +53,9 @@ export default function AdminPage() {
                 <Skeleton key={i} className="h-32" />
               ))}
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2">
-                <Skeleton className="h-96" />
-              </div>
-              <div>
-                <Skeleton className="h-96" />
-              </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Skeleton className="h-96" />
+              <Skeleton className="h-96" />
             </div>
           </div>
         </div>
@@ -90,35 +85,22 @@ export default function AdminPage() {
             <StatsCards stats={dashboardData.stats} />
           </motion.div>
 
-          {/* Grid principal con acciones rápidas y alertas */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Acciones rápidas - 2 columnas */}
-            <motion.div
-              className="lg:col-span-2"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-            >
-              <QuickActions pendingOrdersCount={dashboardData.stats.pendingOrders} />
-            </motion.div>
+          {/* Sección principal de gestión de pedidos */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            <OrdersManagementSection />
+          </motion.div>
 
-            {/* Alertas del sistema - 1 columna */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5, delay: 0.3 }}
-            >
-              <SystemAlerts alerts={dashboardData.alerts} />
-            </motion.div>
-          </div>
-
-          {/* Gráficos y visualizaciones adicionales */}
+          {/* Gráficos y visualizaciones */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Gráfico de pedidos por día */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.4 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
             >
               <Card className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
                 <CardHeader>
@@ -168,7 +150,7 @@ export default function AdminPage() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.5 }}
+              transition={{ duration: 0.5, delay: 0.4 }}
             >
               <Card className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
                 <CardHeader>
@@ -228,7 +210,7 @@ export default function AdminPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.6 }}
+            transition={{ duration: 0.5, delay: 0.5 }}
           >
             <Card className="bg-gradient-to-r from-slate-50 to-blue-50 dark:from-slate-800 dark:to-blue-900/20 border-slate-200 dark:border-slate-700">
               <CardContent className="p-6">

@@ -6,9 +6,7 @@ import { motion } from 'framer-motion'
 import { 
   LayoutDashboard, 
   Users, 
-  ShoppingCart, 
   MenuSquare, 
-  BarChart3,
   Settings,
   LogOut,
   Menu,
@@ -35,7 +33,7 @@ export function AdminNavigation() {
       name: 'Dashboard',
       href: '/admin',
       icon: LayoutDashboard,
-      description: 'Panel principal'
+      description: 'Panel principal con gestión de pedidos'
     },
     {
       name: 'Usuarios',
@@ -44,22 +42,10 @@ export function AdminNavigation() {
       description: 'Gestión de usuarios'
     },
     {
-      name: 'Pedidos',
-      href: '/admin/pedidos',
-      icon: ShoppingCart,
-      description: 'Gestión de pedidos'
-    },
-    {
       name: 'Menús',
       href: '/admin/menus',
       icon: MenuSquare,
       description: 'Gestión de menús'
-    },
-    {
-      name: 'Reportes',
-      href: '/admin/reportes',
-      icon: BarChart3,
-      description: 'Centro de reportes'
     }
   ]
 
@@ -115,11 +101,11 @@ export function AdminNavigation() {
           <div className="p-4 border-b border-slate-200 dark:border-slate-700">
             <div className="flex items-center space-x-2">
               <div className="flex items-center justify-center w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg">
-                <BarChart3 className="w-4 h-4 text-white" />
+                <LayoutDashboard className="w-4 h-4 text-white" />
               </div>
               <div>
                 <h2 className="text-sm font-bold text-slate-900 dark:text-white">
-                  Admin Panel
+                  Panel Administrativo
                 </h2>
                 <p className="text-xs text-slate-600 dark:text-slate-400">
                   Casino Escolar
@@ -197,11 +183,11 @@ export function AdminNavigation() {
           <div className="p-4 border-b border-slate-200 dark:border-slate-700">
             <div className="flex items-center space-x-2">
               <div className="flex items-center justify-center w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg">
-                <BarChart3 className="w-4 h-4 text-white" />
+                <LayoutDashboard className="w-4 h-4 text-white" />
               </div>
               <div>
                 <h2 className="text-sm font-bold text-slate-900 dark:text-white">
-                  Admin Panel
+                  Panel Administrativo
                 </h2>
                 <p className="text-xs text-slate-600 dark:text-slate-400">
                   Casino Escolar
